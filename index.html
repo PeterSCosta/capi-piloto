@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Capi — piloto</title>
+  <meta name="description" content="Piloto fechado do Capi: uma capivara que vive da sua rotina saudável." />
+  <meta name="theme-color" content="#3E9B4F" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Capi" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="icones/icone-180.png" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+
+  <!-- ═══════════ PORTÃO DE CONVITE (piloto fechado) ═══════════ -->
+  <section id="portao" class="portao hidden">
+    <div class="ob-step">
+      <div class="ob-hero st-feliz" id="portao-pet"></div>
+      <h1>Piloto fechado</h1>
+      <p class="ob-sub">O Capi está em teste com um grupo pequeno.
+        Coloque o código do seu convite para entrar.</p>
+      <form id="portao-form" novalidate>
+        <div class="field">
+          <label for="portao-codigo">Código do convite</label>
+          <input id="portao-codigo" class="portao-input mono" type="text" inputmode="latin"
+                 maxlength="14" placeholder="XXXX-XXXX-XXXX" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" aria-describedby="portao-erro" />
+        </div>
+        <p class="portao-erro hidden" id="portao-erro" role="alert"></p>
+        <button class="btn btn-primary btn-lg" type="submit" id="portao-entrar">Entrar</button>
+      </form>
+      <p class="ob-note">Recebeu um link com o código? Ele entra sozinho — não precisa digitar.</p>
+    </div>
+  </section>
+
+  <!-- ═══════════ ONBOARDING (RF01) ═══════════ -->
+  <section id="onboarding" class="onboarding hidden">
+
+    <div class="ob-step" data-step="1">
+      <div class="ob-hero st-feliz" id="ob-hero-pet"></div>
+      <h1>Esta é a Capi.<br />Ela vive dos seus hábitos.</h1>
+      <p class="ob-sub">Beba água, coma bem e se movimente — a Capi cresce junto.
+        Ela <strong>nunca morre, nunca pune, nunca gera culpa</strong>. Só zoa com carinho,
+        do jeito capivara.</p>
+      <button class="btn btn-primary btn-lg" data-ob-next>Começar</button>
+    </div>
+
+    <div class="ob-step hidden" data-step="2">
+      <h2>Quase lá</h2>
+      <div class="field">
+        <label for="ob-nome">Como você vai chamar ela?</label>
+        <input id="ob-nome" type="text" maxlength="20" placeholder="Capi" autocomplete="off" />
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="ob-agua">Meta de água</label>
+          <select id="ob-agua">
+            <option value="1500">1,5 L</option>
+            <option value="2000" selected>2 L</option>
+            <option value="2500">2,5 L</option>
+            <option value="3000">3 L</option>
+          </select>
+        </div>
+        <div class="field">
+          <label for="ob-passos">Meta de passos</label>
+          <select id="ob-passos">
+            <option value="4000">4.000</option>
+            <option value="6000" selected>6.000</option>
+            <option value="8000">8.000</option>
+            <option value="10000">10.000</option>
+          </select>
+        </div>
+      </div>
+      <p class="ob-note">Você pode mudar tudo isso depois no perfil.</p>
+      <button class="btn btn-primary btn-lg" id="ob-finish">Conhecer a Capi</button>
+    </div>
+  </section>
+
+  <!-- ═══════════ TELA PRINCIPAL (RF02) ═══════════ -->
+  <main id="app" class="app hidden">
+
+    <header class="topbar">
+      <button class="chip chip-pet" id="btn-perfil" title="Perfil e configurações">
+        <span class="chip-nome" id="hud-nome">—</span>
+        <span class="chip-estagio" id="hud-estagio">Filhote</span>
+      </button>
+      <div class="topbar-right">
+        <button class="chip chip-streak" id="btn-historico" title="Histórico">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M12 2c1 4-2 5-2 8a4 4 0 0 0 8 .5C20 14 21 16 21 17a7 7 0 0 1-14 0c0-5 4-7 5-15z" fill="currentColor"/></svg>
+          <span id="hud-streak">0</span>
+        </button>
+        <button class="chip chip-folhas" id="btn-loja" title="Loja">
+          <svg viewBox="0 0 24 24" class="ico"><path d="M20 4C10 4 4 9 4 16c0 2 1 4 2 4 .6 0 .8-.7 1.2-1.6C8.6 15.6 12 11 17 9c-4 3-7 7-8.3 10.4-.2.5.1.6.8.6 8 0 11-6 10.5-16z" fill="currentColor"/></svg>
+          <span id="hud-folhas" class="mono">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Cenário + pet -->
+    <section class="stage" id="stage">
+      <div class="scene" id="scene"></div>
+      <div class="bubble hidden" id="bubble"><p id="bubble-text"></p></div>
+      <div class="pet-holder" id="pet-holder"></div>
+      <div class="confetti hidden" id="confetti"></div>
+    </section>
+
+    <!-- Barra de energia do dia -->
+    <section class="energy">
+      <div class="energy-head">
+        <span>Energia do dia</span>
+        <span class="mono" id="energy-num">0<span class="energy-max">/100</span></span>
+      </div>
+      <div class="energy-bar" role="progressbar" aria-label="Energia do dia" aria-valuemin="0" aria-valuemax="100">
+        <div class="energy-seg seg-agua" id="seg-agua" title="Água"></div>
+        <div class="energy-seg seg-ref" id="seg-ref" title="Alimentação"></div>
+        <div class="energy-seg seg-mov" id="seg-mov" title="Movimento"></div>
+        <i class="energy-notch" title="Dia completo aos 80"></i>
+      </div>
+      <div class="energy-legend">
+        <span><i class="dot dot-agua"></i>Água</span>
+        <span><i class="dot dot-ref"></i>Comida</span>
+        <span><i class="dot dot-mov"></i>Movimento</span>
+        <span class="energy-hint">80 = dia completo</span>
+      </div>
+    </section>
+
+    <!-- Botões de registro rápido -->
+    <section class="quick">
+      <button class="quick-btn qb-agua" id="qb-agua">
+        <svg viewBox="0 0 24 24" class="qico"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg>
+        <span class="qb-label">Água</span>
+        <span class="qb-sub mono" id="qb-agua-sub">0 ml</span>
+      </button>
+      <button class="quick-btn qb-ref" id="qb-ref">
+        <svg viewBox="0 0 24 24" class="qico"><path d="M7 2v8a3 3 0 0 0 2 2.8V22h2V12.8A3 3 0 0 0 13 10V2h-2v6H10V2H8.5v6H7.5V2H7zm10 0c-1.7 0-3 2.2-3 5 0 2.2.8 4 2 4.7V22h2V2h-1z" fill="currentColor"/></svg>
+        <span class="qb-label">Refeição</span>
+        <span class="qb-sub mono" id="qb-ref-sub">0/3</span>
+      </button>
+      <button class="quick-btn qb-mov" id="qb-mov">
+        <svg viewBox="0 0 24 24" class="qico"><path d="M13 3a2 2 0 1 1 4 0 2 2 0 0 1-4 0zM9.5 8.5 12 7l3 1 2.5 3.5 2.5.5-.5 2-3.5-.7L14 11l-1 4 3 3-1 5-2-.5.7-3.7L11 16l-1.5 5H7.4L10 13l-1-3-2.5 2L5 15l-1.8-.8L6 9.5l3.5-1z" fill="currentColor"/></svg>
+        <span class="qb-label">Movimento</span>
+        <span class="qb-sub mono" id="qb-mov-sub">0 passos</span>
+      </button>
+    </section>
+
+    <button class="demo-toggle" id="btn-demo" title="Painel de demonstração">demo</button>
+  </main>
+
+  <!-- ═══════════ SHEETS ═══════════ -->
+  <div class="overlay hidden" id="overlay"></div>
+
+  <!-- Água (RF03: 2 toques no máx.) -->
+  <section class="sheet hidden" id="sheet-agua" aria-label="Registrar água">
+    <header class="sheet-head"><h3>Água</h3><button class="sheet-close" data-close>&times;</button></header>
+    <p class="sheet-meta">Hoje: <strong class="mono" id="agua-hoje">0 ml</strong> · meta <span class="mono" id="agua-meta">2.000 ml</span></p>
+    <div class="agua-btns">
+      <button class="btn-agua" data-ml="250"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Copo</strong><span class="mono">250 ml</span></button>
+      <button class="btn-agua" data-ml="500"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Garrafa</strong><span class="mono">500 ml</span></button>
+      <button class="btn-agua" data-ml="custom"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Outro</strong><span class="mono">? ml</span></button>
+    </div>
+    <div class="agua-registros" id="agua-registros"></div>
+  </section>
+
+  <!-- Refeição (RF04: 1 toque por refeição + avaliação) -->
+  <section class="sheet hidden" id="sheet-ref" aria-label="Registrar refeição">
+    <header class="sheet-head"><h3>Refeição</h3><button class="sheet-close" data-close>&times;</button></header>
+    <p class="sheet-meta">Sem foto, sem caloria, sem julgamento. Registrar já é vitória.<br /><small>Na PoC a lista de refeições é fixa; no app ela será configurável (GDD §4.2).</small></p>
+    <div id="ref-lista"></div>
+  </section>
+
+  <!-- Movimento (RF05) -->
+  <section class="sheet hidden" id="sheet-mov" aria-label="Movimento">
+    <header class="sheet-head"><h3>Movimento</h3><button class="sheet-close" data-close>&times;</button></header>
+    <div class="mov-passos">
+      <div class="mov-ring" id="mov-ring">
+        <svg viewBox="0 0 120 120">
+          <circle cx="60" cy="60" r="52" class="ring-bg" />
+          <circle cx="60" cy="60" r="52" class="ring-fg" id="ring-fg" />
+        </svg>
+        <div class="mov-ring-txt">
+          <strong class="mono" id="mov-passos-num">0</strong>
+          <span>de <span class="mono" id="mov-passos-meta">6.000</span></span>
+        </div>
+      </div>
+      <p class="mov-note">Na PoC os passos são simulados. No app real: Health Connect (Android) / HealthKit (iOS), sync ao abrir e em background.</p>
+      <button class="btn btn-ghost" id="btn-sync-passos">Simular sync do celular</button>
+    </div>
+    <hr class="sep" />
+    <button class="btn btn-primary btn-lg" id="btn-treino">Treinei hoje</button>
+    <p class="mov-note" id="treino-status"></p>
+  </section>
+
+  <!-- Loja (RF08) -->
+  <section class="sheet hidden" id="sheet-loja" aria-label="Loja">
+    <header class="sheet-head">
+      <h3>Loja</h3>
+      <span class="chip chip-folhas chip-static">
+        <svg viewBox="0 0 24 24" class="ico"><path d="M20 4C10 4 4 9 4 16c0 2 1 4 2 4 .6 0 .8-.7 1.2-1.6C8.6 15.6 12 11 17 9c-4 3-7 7-8.3 10.4-.2.5.1.6.8.6 8 0 11-6 10.5-16z" fill="currentColor"/></svg>
+        <span id="loja-folhas" class="mono">0</span>
+      </span>
+      <button class="sheet-close" data-close>&times;</button>
+    </header>
+    <div class="loja-grid" id="loja-grid"></div>
+  </section>
+
+  <!-- Histórico (RF10) -->
+  <section class="sheet hidden" id="sheet-hist" aria-label="Histórico">
+    <header class="sheet-head"><h3>Histórico</h3><button class="sheet-close" data-close>&times;</button></header>
+    <p class="sheet-meta" id="hist-resumo"></p>
+    <div class="hist-cal" id="hist-cal"></div>
+    <div class="hist-legend">
+      <span><i class="hl hl-full"></i>Dia completo</span>
+      <span><i class="hl hl-half"></i>Parcial (≥50)</span>
+      <span><i class="hl hl-dot"></i>Registrou algo</span>
+    </div>
+  </section>
+
+  <!-- Perfil (RF11) -->
+  <section class="sheet hidden" id="sheet-perfil" aria-label="Perfil e configurações">
+    <header class="sheet-head"><h3>Perfil</h3><button class="sheet-close" data-close>&times;</button></header>
+    <div class="field">
+      <label for="cfg-nome">Nome da sua capivara</label>
+      <input id="cfg-nome" type="text" maxlength="20" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="cfg-agua">Meta de água</label>
+        <select id="cfg-agua">
+          <option value="1500">1,5 L</option><option value="2000">2 L</option>
+          <option value="2500">2,5 L</option><option value="3000">3 L</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="cfg-passos">Meta de passos <small>(vale amanhã)</small></label>
+        <select id="cfg-passos">
+          <option value="4000">4.000</option><option value="6000">6.000</option>
+          <option value="8000">8.000</option><option value="10000">10.000</option>
+        </select>
+      </div>
+    </div>
+    <hr class="sep" />
+    <p class="perfil-convite hidden" id="perfil-convite">
+      Piloto como <strong id="perfil-convite-nome">—</strong>
+      <button class="link-btn" id="btn-sair">sair deste device</button>
+    </p>
+    <button class="btn btn-ghost" id="btn-feedback">Mandar feedback do piloto</button>
+    <div class="lgpd-row">
+      <button class="btn btn-ghost" id="btn-exportar">Exportar meus dados</button>
+      <button class="btn btn-danger-ghost" id="btn-excluir">Excluir tudo</button>
+    </div>
+    <p class="ob-note">LGPD: dados de saúde são sensíveis. No app real: consentimento granular, exclusão apaga tudo.</p>
+  </section>
+
+  <!-- Painel demo -->
+  <section class="sheet hidden" id="sheet-demo" aria-label="Painel de demonstração">
+    <header class="sheet-head"><h3>Painel de demo</h3><button class="sheet-close" data-close>&times;</button></header>
+    <p class="sheet-meta">Atalhos para demonstrar a progressão sem esperar dias reais.</p>
+    <div class="demo-grid">
+      <button class="btn btn-ghost" id="demo-dia">Avançar 1 dia</button>
+      <button class="btn btn-ghost" id="demo-fechar-dia">Completar o dia atual</button>
+      <button class="btn btn-ghost" id="demo-7dias">+7 dias completos</button>
+      <button class="btn btn-ghost" id="demo-folhas">+50 folhas</button>
+      <button class="btn btn-ghost" id="demo-noite">Alternar dia/noite</button>
+      <button class="btn btn-danger-ghost" id="demo-reset">Zerar tudo</button>
+    </div>
+    <p class="ob-note" id="demo-info"></p>
+  </section>
+
+  <!-- Modal de evolução (RF09) -->
+  <div class="evo hidden" id="evo">
+    <div class="evo-card">
+      <div class="evo-burst"></div>
+      <div class="evo-pet st-comemorando" id="evo-pet"></div>
+      <h2 id="evo-titulo">Evoluiu!</h2>
+      <p id="evo-sub"></p>
+      <button class="btn btn-primary btn-lg" id="evo-ok">Aê!</button>
+    </div>
+  </div>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="js/economia.js"></script>
+  <script src="js/frases.js"></script>
+  <script src="js/pets.js"></script>
+  <script src="js/app.js"></script>
+  <script src="js/acesso.js"></script>
+</body>
+</html>

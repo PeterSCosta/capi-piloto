@@ -1,0 +1,26 @@
+{
+  "versao": 1,
+  "nota": "Só o SHA-256 do código fica aqui — o código em claro nunca entra no repositório. Gere com scripts/gerar-convite.mjs; revogue com --revogar <id>.",
+  "convites": [
+    {
+      "id": "peter",
+      "nome": "Peter",
+      "hash": "018eb28275e835c95e5e85b442b7608f64b6c24fa25c62ddae4c327cbdca96b9"
+    },
+    {
+      "id": "renata",
+      "nome": "Renata",
+      "hash": "b6099b72cf3614da31101af437e9a0f50a5c27689245b38fdbfa253a7701ade3"
+    },
+    {
+      "id": "convidado-1",
+      "nome": "Convidado 1",
+      "hash": "a95c3c0a5b508dad5f33a716b2fd926f7240467275fde18da71cfb6f9fa288f8"
+    },
+    {
+      "id": "convidado-2",
+      "nome": "Convidado 2",
+      "hash": "edee263ee7a8d3b939e4233d1afe81257cc3f1eca36dba2a3c88fa301b789461"
+    }
+  ]
+}

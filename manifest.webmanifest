@@ -1,0 +1,19 @@
+{
+  "name": "Capi",
+  "short_name": "Capi",
+  "description": "Uma capivara que vive da sua rotina: beber água, comer bem e se movimentar.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FAF5EA",
+  "theme_color": "#3E9B4F",
+  "categories": ["health", "lifestyle"],
+  "icons": [
+    { "src": "icones/icone-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icones/icone-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
