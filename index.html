@@ -76,7 +76,13 @@
         </div>
       </div>
       <p class="ob-note">Você pode mudar tudo isso depois no perfil.</p>
-      <button class="btn btn-primary btn-lg" id="ob-finish">Conhecer a Capi</button>
+      <label class="consent">
+        <input type="checkbox" id="ob-consent" />
+        <span>Entendi que o que eu registrar aqui é sobre a minha saúde, que fica
+          <strong>só neste aparelho</strong> e que a Capi não substitui profissional de saúde.
+          <button type="button" class="link-btn" id="ob-privacidade">Ler os detalhes</button></span>
+      </label>
+      <button class="btn btn-primary btn-lg" id="ob-finish" disabled>Conhecer a Capi</button>
     </div>
   </section>
 
@@ -103,7 +109,7 @@
     <!-- Cenário + pet -->
     <section class="stage" id="stage">
       <div class="scene" id="scene"></div>
-      <div class="bubble hidden" id="bubble"><p id="bubble-text"></p></div>
+      <div class="bubble hidden" id="bubble" role="status" aria-live="polite"><p id="bubble-text"></p></div>
       <div class="pet-holder" id="pet-holder"></div>
       <div class="confetti hidden" id="confetti"></div>
     </section>
@@ -147,7 +153,7 @@
       </button>
     </section>
 
-    <button class="demo-toggle" id="btn-demo" title="Painel de demonstração">demo</button>
+    <button class="demo-toggle hidden" id="btn-demo" title="Painel de demonstração">demo</button>
   </main>
 
   <!-- ═══════════ SHEETS ═══════════ -->
@@ -155,7 +161,7 @@
 
   <!-- Água (RF03: 2 toques no máx.) -->
   <section class="sheet hidden" id="sheet-agua" aria-label="Registrar água">
-    <header class="sheet-head"><h3>Água</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Água</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <p class="sheet-meta">Hoje: <strong class="mono" id="agua-hoje">0 ml</strong> · meta <span class="mono" id="agua-meta">2.000 ml</span></p>
     <div class="agua-btns">
       <button class="btn-agua" data-ml="250"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Copo</strong><span class="mono">250 ml</span></button>
@@ -167,14 +173,14 @@
 
   <!-- Refeição (RF04: 1 toque por refeição + avaliação) -->
   <section class="sheet hidden" id="sheet-ref" aria-label="Registrar refeição">
-    <header class="sheet-head"><h3>Refeição</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Refeição</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <p class="sheet-meta">Sem foto, sem caloria, sem julgamento. Registrar já é vitória.<br /><small>Na PoC a lista de refeições é fixa; no app ela será configurável (GDD §4.2).</small></p>
     <div id="ref-lista"></div>
   </section>
 
   <!-- Movimento (RF05) -->
   <section class="sheet hidden" id="sheet-mov" aria-label="Movimento">
-    <header class="sheet-head"><h3>Movimento</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Movimento</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <div class="mov-passos">
       <div class="mov-ring" id="mov-ring">
         <svg viewBox="0 0 120 120">
@@ -202,14 +208,14 @@
         <svg viewBox="0 0 24 24" class="ico"><path d="M20 4C10 4 4 9 4 16c0 2 1 4 2 4 .6 0 .8-.7 1.2-1.6C8.6 15.6 12 11 17 9c-4 3-7 7-8.3 10.4-.2.5.1.6.8.6 8 0 11-6 10.5-16z" fill="currentColor"/></svg>
         <span id="loja-folhas" class="mono">0</span>
       </span>
-      <button class="sheet-close" data-close>&times;</button>
+      <button class="sheet-close" data-close aria-label="Fechar">&times;</button>
     </header>
     <div class="loja-grid" id="loja-grid"></div>
   </section>
 
   <!-- Histórico (RF10) -->
   <section class="sheet hidden" id="sheet-hist" aria-label="Histórico">
-    <header class="sheet-head"><h3>Histórico</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Histórico</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <p class="sheet-meta" id="hist-resumo"></p>
     <div class="hist-cal" id="hist-cal"></div>
     <div class="hist-legend">
@@ -221,7 +227,7 @@
 
   <!-- Perfil (RF11) -->
   <section class="sheet hidden" id="sheet-perfil" aria-label="Perfil e configurações">
-    <header class="sheet-head"><h3>Perfil</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Perfil</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <div class="field">
       <label for="cfg-nome">Nome da sua capivara</label>
       <input id="cfg-nome" type="text" maxlength="20" />
@@ -249,15 +255,53 @@
     </p>
     <button class="btn btn-ghost" id="btn-feedback">Mandar feedback do piloto</button>
     <div class="lgpd-row">
-      <button class="btn btn-ghost" id="btn-exportar">Exportar meus dados</button>
-      <button class="btn btn-danger-ghost" id="btn-excluir">Excluir tudo</button>
+      <button class="btn btn-ghost" id="btn-exportar">Salvar backup</button>
+      <button class="btn btn-ghost" id="btn-importar">Restaurar backup</button>
     </div>
-    <p class="ob-note">LGPD: dados de saúde são sensíveis. No app real: consentimento granular, exclusão apaga tudo.</p>
+    <input type="file" id="arquivo-import" accept="application/json,.json" class="hidden" />
+    <button class="btn btn-danger-ghost" id="btn-excluir">Excluir tudo deste aparelho</button>
+    <p class="ob-note">Seus dados vivem só neste aparelho — se você limpar o navegador, some.
+      Salve um backup de vez em quando.
+      <button type="button" class="link-btn" id="btn-privacidade">Privacidade e saúde</button></p>
+  </section>
+
+  <!-- Privacidade e saúde -->
+  <section class="sheet hidden" id="sheet-privacidade" aria-label="Privacidade e saúde">
+    <header class="sheet-head"><h3>Privacidade e saúde</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
+    <p class="sheet-meta"><strong>Rascunho do piloto</strong> — texto ainda a ser revisado antes de abrir
+      para mais gente.</p>
+
+    <h4 class="doc-h">O que fica guardado</h4>
+    <p class="doc-p">O que você registra (água, refeições, movimento), o progresso da Capi e um
+      histórico de uso do app. Também o nome que veio no seu convite.</p>
+
+    <h4 class="doc-h">Onde isso fica</h4>
+    <p class="doc-p">Só no armazenamento deste navegador, neste aparelho. Não existe servidor, conta
+      nem sincronização: <strong>nada é enviado automaticamente para ninguém</strong>. A consequência
+      honesta disso é que limpar o navegador apaga tudo — por isso existe o backup.</p>
+
+    <h4 class="doc-h">O que a equipe do piloto vê</h4>
+    <p class="doc-p">Nada, a não ser o que você mandar. Quando você toca em "mandar feedback", o
+      e-mail leva um resumo de uso (quantas vezes registrou, se voltou no dia seguinte) — nunca o que
+      você comeu ou bebeu. Você lê e edita o e-mail antes de enviar.</p>
+
+    <h4 class="doc-h">Seus direitos</h4>
+    <p class="doc-p">No perfil você pode levar seus dados embora (backup) e apagar tudo deste
+      aparelho, incluindo o acesso ao piloto. Não pedimos nada em troca e não guardamos cópia.</p>
+
+    <h4 class="doc-h">Sobre saúde</h4>
+    <p class="doc-p">A Capi é um app de hábitos, <strong>não é aconselhamento médico</strong> e não
+      substitui profissional de saúde. As metas são referências gerais: quem tem restrição de líquido,
+      condição de saúde, está grávida ou em tratamento deve seguir a orientação de quem acompanha.
+      Se algo aqui te deixar ansioso com comida, corpo ou exercício, pare e fale com um profissional.</p>
+
+    <h4 class="doc-h">Falar com a gente</h4>
+    <p class="doc-p">Use o botão de feedback no perfil, ou responda para quem te mandou o convite.</p>
   </section>
 
   <!-- Painel demo -->
   <section class="sheet hidden" id="sheet-demo" aria-label="Painel de demonstração">
-    <header class="sheet-head"><h3>Painel de demo</h3><button class="sheet-close" data-close>&times;</button></header>
+    <header class="sheet-head"><h3>Painel de demo</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
     <p class="sheet-meta">Atalhos para demonstrar a progressão sem esperar dias reais.</p>
     <div class="demo-grid">
       <button class="btn btn-ghost" id="demo-dia">Avançar 1 dia</button>
@@ -271,7 +315,7 @@
   </section>
 
   <!-- Modal de evolução (RF09) -->
-  <div class="evo hidden" id="evo">
+  <div class="evo hidden" id="evo" role="dialog" aria-modal="true" aria-labelledby="evo-titulo">
     <div class="evo-card">
       <div class="evo-burst"></div>
       <div class="evo-pet st-comemorando" id="evo-pet"></div>
@@ -281,9 +325,10 @@
     </div>
   </div>
 
-  <div class="toast hidden" id="toast"></div>
+  <div class="toast hidden" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/economia.js"></script>
+  <script src="js/telemetria.js"></script>
   <script src="js/frases.js"></script>
   <script src="js/pets.js"></script>
   <script src="js/app.js"></script>

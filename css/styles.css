@@ -37,7 +37,7 @@ button { font: inherit; color: inherit; background: none; border: 0; cursor: poi
 input, select {
   font: inherit; color: var(--ink); background: var(--card);
   border: 2px solid var(--line); border-radius: var(--radius-sm);
-  padding: 12px 14px; width: 100%; outline: none;
+  padding: 12px 14px; width: 100%;
 }
 input:focus, select:focus { border-color: var(--verde); }
 small { color: var(--ink-soft); font-weight: 400; }
@@ -411,4 +411,28 @@ small { color: var(--ink-soft); font-weight: 400; }
 .link-btn {
   color: var(--verde-escuro); font-size: 13px; font-weight: 700; text-decoration: underline;
   padding: 6px 2px; min-height: 32px;
+}
+
+/* ═══ Consentimento e documentos ═══ */
+.consent { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.45; color: var(--ink-soft); }
+.consent input { width: 22px; height: 22px; flex-shrink: 0; margin-top: 1px; accent-color: var(--verde); }
+.consent strong { color: var(--ink); }
+.doc-h { font-size: 15px; font-weight: 800; margin-top: 4px; }
+.doc-p { font-size: 14px; line-height: 1.5; color: var(--ink-soft); }
+.doc-p strong { color: var(--ink); }
+
+/* ═══ Acessibilidade ═══ */
+:focus-visible {
+  outline: 3px solid var(--verde);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  /* quem pediu menos movimento continua vendo os estados do pet — só não vê nada balançar */
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+  }
+  .pet-holder { animation: none !important; }
 }

@@ -5,6 +5,7 @@
   /* ═══ Economia ═══ As regras vivem em js/economia.js (motor puro, testado no CI).
      Aqui ficam só a UI, o estado persistido e a narração dos eventos. */
   const Ec = window.Economia;
+  const Tel = window.Telemetria;
   const R = Ec.REGRAS;
   const ESTAGIOS = R.ESTAGIOS;
   const SONECAS_POR_JANELA = R.SONECAS_POR_JANELA;
@@ -33,7 +34,7 @@
     return {
       v: 2, pet: PET, nomePet: '', configurado: false,
       metas: { agua: R.METAS_DEFAULT.agua, passos: R.METAS_DEFAULT.passos },
-      folhas: 0, diasCompletos: 0, streak: 0, ultimoCompleto: null,
+      folhas: 0, diasCompletos: 0, diasPresenca: 0, streak: 0, ultimoCompleto: null,
       hoje: novoDia(hojeStr(0), R.METAS_DEFAULT.passos, R.METAS_DEFAULT.agua),
       historico: {},
       sonecas: [], /* datas em que a Soneca da Capivara protegeu a sequência */
@@ -56,6 +57,8 @@
   function sanear() {
     const n = (v, d) => (typeof v === 'number' && Number.isFinite(v) ? v : d);
     S.folhas = n(S.folhas, 0); S.diasCompletos = n(S.diasCompletos, 0);
+    /* migração: quem já jogava entra com pelo menos os dias completos como presença */
+    S.diasPresenca = n(S.diasPresenca, S.diasCompletos);
     S.streak = n(S.streak, 0); S.simDias = n(S.simDias, 0);
     S.metas = S.metas || {};
     S.metas.agua = n(S.metas.agua, R.METAS_DEFAULT.agua);
@@ -91,7 +94,7 @@
     return fmtData(dataLocal(simDias == null ? (S ? S.simDias : 0) : simDias));
   }
   const energiaHoje = () => Ec.energiaDia(S.hoje);
-  const estagioIdx = () => Ec.estagioIdx(S.diasCompletos);
+  const estagioIdx = () => Ec.estagioIdx(Ec.diasDeProgresso(S));
   const sonecasDisponiveis = (hoje) => Ec.sonecasDisponiveis(S.sonecas, hoje);
 
   /* virada de dia: fecha o(s) dia(s) anterior(es); perder streak não tira nada já ganho.
@@ -106,8 +109,8 @@
     const virada = Ec.avaliarVirada(S, hoje);
     S.streak = virada.streak;
     virada.sonecasNovas.forEach((d) => S.sonecas.push(d));
-    if (virada.tipo === 'soneca') S.pendSonecaMsg = true;
-    if (virada.tipo === 'quebra') S.pendStreakMsg = true;
+    if (virada.tipo === 'soneca') { S.pendSonecaMsg = true; Tel.registrar('soneca_usada', { dias: virada.sonecasNovas.length }); }
+    if (virada.tipo === 'quebra') { S.pendStreakMsg = true; Tel.registrar('sequencia_perdida'); }
     S.hoje = novoDia(hoje, S.metas.passos, S.metas.agua);
     save();
     return true;
@@ -119,20 +122,24 @@
     const eventos = Ec.concederFolhas(S.hoje, S);
     eventos.forEach((ev) => {
       if (silencioso) {
-        if (ev.tipo === 'completo' && ev.evoluiuPara != null) S._evoPend = ev.evoluiuPara;
+        if (ev.evoluiuPara != null) S._evoPend = ev.evoluiuPara;
         return;
       }
       if (ev.tipo === 'registro') {
         toast(`+${ev.delta} folhas — primeiro registro do dia`);
       } else if (ev.tipo === 'parcial') {
+        Tel.registrar('dia_parcial');
         toast(`+${ev.delta} folhas — dia parcial garantido (${ev.total} hoje)`);
         falar('dia_parcial');
+        if (ev.evoluiuPara != null) mostrarEvolucao(ev.evoluiuPara);
       } else if (ev.tipo === 'completo') {
+        Tel.registrar('dia_completo', { streak: ev.streak });
         toast(`+${ev.delta} folhas — dia completo!${ev.bonus ? ` (bônus de sequência +${ev.bonus})` : ''}`);
         falar('dia_completo');
         celebrar();
         if (ev.evoluiuPara != null) mostrarEvolucao(ev.evoluiuPara);
       } else if (ev.tipo === 'epico') {
+        Tel.registrar('dia_epico');
         toast('Barra 100 — dia épico!');
       }
     });
@@ -146,8 +153,14 @@
     S.hoje.aguaRegs.push(ml);
     Ec.recalcularDia(S.hoje);
     S.hoje.registros += 1;
+    Tel.registrar('registro_agua', { ml });
     fecharSheet(); /* a reação do pet é o coração do loop — não pode ficar atrás do overlay */
     reagir('agua');
+    if (S.hoje.aguaMl >= R.AGUA_ALERTA_DIA && !S.hoje.avisoAgua) {
+      /* teto de segurança: avisa com carinho, nunca bloqueia o registro */
+      S.hoje.avisoAgua = true;
+      toast('Já é bastante água pra um dia — se cuida, tá?');
+    }
     checarMarcos();
     renderTudo();
   }
@@ -167,6 +180,7 @@
     if (!S.hoje.refeicoes[refId]) S.hoje.registros += 1;
     S.hoje.refeicoes[refId] = avalId;
     Ec.recalcularDia(S.hoje);
+    Tel.registrar('registro_refeicao', { aval: avalId });
     fecharSheet();
     reagir('refeicao_' + avalId);
     checarMarcos();
@@ -181,6 +195,7 @@
     if (S.hoje.passos >= meta && !S.hoje.metaPassosBatida) {
       S.hoje.metaPassosBatida = true;
       S.hoje.registros += 1;
+      Tel.registrar('registro_movimento');
       fecharSheet();
       reagir('passos_meta');
     }
@@ -194,6 +209,7 @@
     S.hoje.treinou = true;
     Ec.recalcularDia(S.hoje);
     S.hoje.registros += 1;
+    Tel.registrar('registro_treino');
     fecharSheet();
     reagir('treino');
     checarMarcos();
@@ -413,6 +429,7 @@
           if (S.folhas < item.preco) { toast('Folhas insuficientes — complete dias para ganhar mais'); return; }
           S.folhas -= item.preco;
           S.inv.push(item.id);
+          Tel.registrar('compra_loja', { preco: item.preco });
           equipar(item);
           falar('compra_loja');
           save();
@@ -455,7 +472,7 @@
     const nDias = new Date(y, m, 0).getDate();
     const nomeMes = primeiro.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
     $('hist-resumo').innerHTML =
-      `<strong>${nomeMes}</strong> · ${fmtNum(S.diasCompletos)} dia(s) completo(s) no total · sequência atual: ${S.streak} · sonecas: ${sonecasDisponiveis(hoje)}/${SONECAS_POR_JANELA}`;
+      `<strong>${nomeMes}</strong> · ${fmtNum(S.diasPresenca)} dia(s) com a Capi · ${fmtNum(S.diasCompletos)} completo(s) · sequência: ${S.streak} · sonecas: ${sonecasDisponiveis(hoje)}/${SONECAS_POR_JANELA}`;
     const cal = $('hist-cal');
     cal.innerHTML = '';
     ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'].forEach((d) => {
@@ -505,8 +522,9 @@
   function mostrarEvolucao(idx) {
     $('evo-pet').innerHTML = PetArt.pet(S.pet, { stage: idx, equip: S.equip });
     $('evo-titulo').textContent = `${S.nomePet || NOME_PADRAO} evoluiu!`;
-    $('evo-sub').textContent = `Agora é ${ESTAGIOS[idx].nome} — ${ESTAGIOS[idx].dias} dias completos acumulados. Consistência, não perfeição.`;
+    $('evo-sub').textContent = `Agora é ${ESTAGIOS[idx].nome} — ${ESTAGIOS[idx].dias} dias de presença. Consistência, não perfeição.`;
     $('evo').classList.remove('hidden');
+    Tel.registrar('evolucao', { estagio: idx });
     confete();
     falar('evolucao');
   }
@@ -516,7 +534,17 @@
     $('onboarding').classList.remove('hidden');
     $('ob-hero-pet').innerHTML = PetArt.pet(PET, { stage: 1 });
     document.querySelector('[data-ob-next]').addEventListener('click', () => passoOb(2));
+    /* LGPD: dado de saúde exige consentimento explícito — o botão só destrava com o aceite */
+    $('ob-consent').addEventListener('change', () => {
+      $('ob-finish').disabled = !$('ob-consent').checked;
+    });
+    $('ob-privacidade').addEventListener('click', () => {
+      Tel.registrar('abriu_privacidade');
+      abrirSheet('sheet-privacidade');
+    });
     $('ob-finish').addEventListener('click', () => {
+      if (!$('ob-consent').checked) return;
+      S.consentimento = { em: new Date().toISOString(), versao: 1 };
       S.pet = PET;
       S.configurado = true;
       S.nomePet = $('ob-nome').value.trim() || NOME_PADRAO;
@@ -525,6 +553,7 @@
       S.hoje.metaPassos = S.metas.passos; /* o dia ainda nem começou de fato */
       S.hoje.metaAgua = S.metas.agua;
       save();
+      Tel.registrar('onboarding_completo');
       $('onboarding').classList.add('hidden');
       initApp();
     });
@@ -555,6 +584,19 @@
   }
 
   function initDemo() {
+    /* O painel de demonstração ("+7 dias completos", "+50 folhas") contamina o playtest se ficar à
+       mão do convidado. Fica escondido, e só aparece para quem abrir com ?demo=1 — que gruda neste
+       aparelho (e sai com ?demo=0). */
+    const url = new URL(location.href);
+    const pedido = url.searchParams.get('demo');
+    if (pedido === '1') localStorage.setItem('capi-demo', '1');
+    if (pedido === '0') localStorage.removeItem('capi-demo');
+    if (pedido !== null) {
+      url.searchParams.delete('demo');
+      history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+    }
+    if (localStorage.getItem('capi-demo') !== '1') return;
+    $('btn-demo').classList.remove('hidden');
     $('btn-demo').addEventListener('click', () => { atualizarDemoInfo(); abrirSheet('sheet-demo'); });
     $('demo-dia').addEventListener('click', () => {
       S.simDias += 1;
@@ -612,7 +654,7 @@
   function atualizarDemoInfo() {
     const modo = S.modoNoite === null ? 'automático (relógio)' : (S.modoNoite ? 'noite forçada' : 'dia forçado');
     $('demo-info').textContent =
-      `Data simulada: ${S.hoje.data} · dias completos: ${S.diasCompletos} · sequência: ${S.streak} · sonecas: ${sonecasDisponiveis(S.hoje.data)}/${SONECAS_POR_JANELA} · modo: ${modo}`;
+      `Data simulada: ${S.hoje.data} · presença: ${S.diasPresenca} · completos: ${S.diasCompletos} · sequência: ${S.streak} · sonecas: ${sonecasDisponiveis(S.hoje.data)}/${SONECAS_POR_JANELA} · modo: ${modo}`;
   }
 
   /* ═══ App principal ═══ */
@@ -624,9 +666,10 @@
     $('qb-agua').addEventListener('click', () => { renderSheetAgua(); abrirSheet('sheet-agua'); });
     $('qb-ref').addEventListener('click', () => { renderSheetRef(); abrirSheet('sheet-ref'); });
     $('qb-mov').addEventListener('click', () => { renderSheetMov(); abrirSheet('sheet-mov'); });
-    $('btn-loja').addEventListener('click', () => { renderLoja(); abrirSheet('sheet-loja'); });
-    $('btn-historico').addEventListener('click', () => { renderHistorico(); abrirSheet('sheet-hist'); });
-    $('btn-perfil').addEventListener('click', () => { renderPerfil(); abrirSheet('sheet-perfil'); });
+    $('btn-loja').addEventListener('click', () => { Tel.registrar('abriu_loja'); renderLoja(); abrirSheet('sheet-loja'); });
+    $('btn-historico').addEventListener('click', () => { Tel.registrar('abriu_historico'); renderHistorico(); abrirSheet('sheet-hist'); });
+    $('btn-perfil').addEventListener('click', () => { Tel.registrar('abriu_perfil'); renderPerfil(); abrirSheet('sheet-perfil'); });
+    $('btn-privacidade').addEventListener('click', () => { Tel.registrar('abriu_privacidade'); abrirSheet('sheet-privacidade'); });
 
     document.querySelectorAll('.btn-agua').forEach((b) => {
       b.addEventListener('click', () => {
@@ -675,33 +718,66 @@
     });
     /* canal de feedback do piloto: assunto pronto + contexto técnico, sem dado de saúde */
     $('btn-feedback').addEventListener('click', () => {
+      Tel.registrar('feedback_aberto');
       const ctx = [
-        `pet: ${S.pet} (${ESTAGIOS[estagioIdx()].nome})`,
+        `estágio: ${ESTAGIOS[estagioIdx()].nome} · presença: ${S.diasPresenca} dia(s)`,
         `dias completos: ${S.diasCompletos} · sequência: ${S.streak}`,
         `convite: ${convidado ? convidado.convite : '—'} · usuário: ${convidado ? convidado.usuarioId : '—'}`,
         `tela: ${window.innerWidth}x${window.innerHeight}`,
         `navegador: ${navigator.userAgent}`,
+        '',
+        'uso (agregado, sem o que você registrou):',
+        Tel.resumoTexto(),
       ].join('\n');
       const corpo = encodeURIComponent(
         `Conta o que achou (o que funcionou, o que irritou, o que faltou):\n\n\n` +
-        `---\ncontexto técnico (não apague, ajuda a reproduzir):\n${ctx}\n`,
+        `---\ncontexto técnico (pode apagar se preferir — ajuda a entender o uso):\n${ctx}\n`,
       );
-      location.href = `mailto:peter.sdcosta@gmail.com?subject=${encodeURIComponent('Feedback do piloto — Pet de Hábitos')}&body=${corpo}`;
+      location.href = `mailto:peter.sdcosta@gmail.com?subject=${encodeURIComponent('Feedback do piloto — Capi')}&body=${corpo}`;
     });
     $('btn-exportar').addEventListener('click', () => {
-      const blob = new Blob([JSON.stringify(S, null, 2)], { type: 'application/json' });
+      const pacote = { formato: 'capi/1', em: new Date().toISOString(), estado: S, eventos: Tel.exportar() };
+      const blob = new Blob([JSON.stringify(pacote, null, 2)], { type: 'application/json' });
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = 'pet-habitos-dados.json';
+      a.download = `capi-meus-dados-${hojeStr()}.json`;
       a.click();
       URL.revokeObjectURL(a.href);
-      toast('Dados exportados (LGPD)');
+      Tel.registrar('dados_exportados');
+      toast('Backup salvo — guarde esse arquivo');
+    });
+    /* importar fecha o par com exportar: sem backend, é o único jeito de não perder o progresso
+       ao limpar o navegador ou trocar de aparelho */
+    $('btn-importar').addEventListener('click', () => $('arquivo-import').click());
+    $('arquivo-import').addEventListener('change', (ev) => {
+      const arquivo = ev.target.files && ev.target.files[0];
+      if (!arquivo) return;
+      const leitor = new FileReader();
+      leitor.onload = () => {
+        try {
+          const pacote = JSON.parse(leitor.result);
+          const estado = pacote && pacote.formato === 'capi/1' ? pacote.estado : pacote;
+          if (!estado || typeof estado !== 'object' || !('folhas' in estado)) throw new Error('formato');
+          if (!confirm('Substituir o progresso deste aparelho pelo do arquivo?')) return;
+          localStorage.setItem(KEY, JSON.stringify(estado));
+          if (pacote.eventos) localStorage.setItem('capi-eventos-v1', JSON.stringify(pacote.eventos));
+          location.reload();
+        } catch (_e) {
+          toast('Não consegui ler esse arquivo');
+        } finally {
+          ev.target.value = '';
+        }
+      };
+      leitor.readAsText(arquivo);
     });
     $('btn-excluir').addEventListener('click', () => {
-      if (confirm('Excluir TODOS os seus dados? (LGPD: apaga tudo, sem volta)')) {
-        localStorage.removeItem(KEY);
-        location.reload();
-      }
+      if (!confirm('Excluir TODOS os seus dados deste aparelho? Apaga o progresso, o histórico de uso e o acesso ao piloto. Não tem volta.')) return;
+      /* LGPD: "apaga tudo" tem que apagar tudo mesmo — inclusive a sessão do convite,
+         que antes sobrevivia e fazia o app reentrar sozinho */
+      Tel.limpar();
+      localStorage.removeItem(KEY);
+      localStorage.removeItem('capi-demo');
+      window.PetAcesso.sair(); /* apaga também a sessão do convite e volta ao portão */
     });
 
     $('overlay').addEventListener('click', fecharSheet);
@@ -757,6 +833,8 @@
   /* ═══ Boot ═══ quem dá a partida é o portão de convite (js/acesso.js), depois de validar o acesso. */
   function iniciar(sessao) {
     convidado = sessao || null;
+    Tel.definirContexto({ usuarioId: sessao ? sessao.usuarioId : null });
+    Tel.registrar('app_aberto');
     load();
     if (!S.configurado) initOnboarding();
     else initApp();

@@ -67,10 +67,10 @@ const FRASES = {
       "Meta batida! Agora senta, estica as pernas e admira o rio."
     ],
     "dia_completo": [
-      "Energia 100! Hoje você foi o rio inteiro, não só a margem.",
+      "Barra cheia! Hoje você foi o rio inteiro, não só a margem.",
       "Dia completo! Vou comemorar do meu jeito: boiando de alegria.",
       "Fechou o dia todinho! Nem o pôr do sol na lagoa fica tão bonito.",
-      "100 de energia! Tô tão feliz que quase levantei.",
+      "Dia fechado! Tô tão feliz que quase levantei.",
       "Dia inteiro cumprido. Isso é coisa de lenda de beira de rio.",
       "Completou tudo! Pode deitar em paz, o dia foi seu."
     ],

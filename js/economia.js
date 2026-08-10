@@ -5,6 +5,7 @@
      · folhas, dias completos e estágio NUNCA diminuem — "nunca pune, nunca tira o ganho";
      · quebra de sequência só zera o bônus;
      · dia completo aos 80 (barra segue até 100 como "dia épico");
+     · a Capi cresce por DIAS DE PRESENÇA (energia >= 50), não por perfeição — ver EVOLUCAO_POR;
      · folhas por FAIXA do dia (3 / 10 / 20 no total), nunca cumulativas. */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
@@ -23,6 +24,11 @@
     FOLHAS: { REGISTRO: 3, PARCIAL: 10, COMPLETO: 20, STREAK_PASSO: 5, STREAK_TETO: 25 },
     SONECAS_POR_JANELA: 2,
     SONECA_JANELA_DIAS: 30,
+    /* O que faz a Capi crescer. 'presenca' = dias com energia >= PARCIAL_EM; 'completos' = dias >= 80.
+       Trocar aqui é a única mudança necessária — ver "evolução por presença" no README. */
+    EVOLUCAO_POR: 'presenca',
+    /* teto de segurança do dia: acima disso o app avisa com carinho (nunca bloqueia o registro) */
+    AGUA_ALERTA_DIA: 4000,
     ESTAGIOS: [
       { nome: 'Filhote', dias: 0 },
       { nome: 'Jovem', dias: 7 },
@@ -111,6 +117,11 @@
   const folhasDoDia = (energia, streakAposFechar) =>
     faixaFolhas(energia) + (energia >= REGRAS.DIA_COMPLETO_EM ? bonusSequencia(streakAposFechar) : 0);
 
+  /* dias que fazem a Capi crescer, conforme REGRAS.EVOLUCAO_POR */
+  const diasDeProgresso = (estado) => (REGRAS.EVOLUCAO_POR === 'presenca'
+    ? (estado.diasPresenca || 0)
+    : (estado.diasCompletos || 0));
+
   function estagioIdx(diasCompletos) {
     let idx = 0;
     REGRAS.ESTAGIOS.forEach((e, i) => { if (diasCompletos >= e.dias) idx = i; });
@@ -155,13 +166,20 @@
       eventos.push({ tipo: 'registro', delta: F.REGISTRO, total: F.REGISTRO });
     }
     if (e >= REGRAS.PARCIAL_EM && !dia.folhasParcial) {
+      const estagioAntes = estagioIdx(diasDeProgresso(estado));
       dia.folhasParcial = true;
       const delta = F.PARCIAL - F.REGISTRO;
       estado.folhas += delta;
-      eventos.push({ tipo: 'parcial', delta, total: F.PARCIAL });
+      /* dia de presença: é isto que faz a Capi crescer quando EVOLUCAO_POR = 'presenca' */
+      estado.diasPresenca = (estado.diasPresenca || 0) + 1;
+      const estagioDepois = estagioIdx(diasDeProgresso(estado));
+      eventos.push({
+        tipo: 'parcial', delta, total: F.PARCIAL,
+        evoluiuPara: estagioDepois > estagioAntes ? estagioDepois : null,
+      });
     }
     if (e >= REGRAS.DIA_COMPLETO_EM && !dia.completo) {
-      const estagioAntes = estagioIdx(estado.diasCompletos);
+      const estagioAntes = estagioIdx(diasDeProgresso(estado));
       dia.completo = true;
       /* só a virada do dia zera a sequência (a soneca preserva); aqui a corrente continua */
       estado.streak = estado.streak > 0 ? estado.streak + 1 : 1;
@@ -170,7 +188,7 @@
       const delta = F.COMPLETO - F.PARCIAL + bonus;
       estado.folhas += delta;
       estado.diasCompletos += 1;
-      const estagioDepois = estagioIdx(estado.diasCompletos);
+      const estagioDepois = estagioIdx(diasDeProgresso(estado));
       eventos.push({
         tipo: 'completo', delta, bonus, total: F.COMPLETO + bonus,
         streak: estado.streak,
@@ -219,7 +237,7 @@
     const rand = prng(o.seed == null ? 42 : o.seed);
     const metas = Object.assign({}, REGRAS.METAS_DEFAULT, o.metas || {});
     const estado = {
-      folhas: 0, diasCompletos: 0, streak: 0, ultimoCompleto: null, sonecas: [],
+      folhas: 0, diasCompletos: 0, diasPresenca: 0, streak: 0, ultimoCompleto: null, sonecas: [],
     };
     const inicio = o.inicio || '2026-01-01';
     const serie = [];
@@ -258,13 +276,13 @@
       const folhasAntes = estado.folhas;
       const eventos = concederFolhas(dia, estado);
       serie.push({
-        data, energia, completo: dia.completo, streak: estado.streak,
+        data, energia, completo: dia.completo, presenca: dia.folhasParcial, streak: estado.streak,
         folhasGanhas: estado.folhas - folhasAntes, folhas: estado.folhas,
         soneca: virada.tipo === 'soneca', quebra: virada.tipo === 'quebra',
         eventos: eventos.map((ev) => ev.tipo),
       });
     }
-    return { estado, serie, estagio: estagio(estado.diasCompletos) };
+    return { estado, serie, estagio: estagio(diasDeProgresso(estado)) };
   }
 
   return {
@@ -272,7 +290,7 @@
     fmtData, parseData, somaDias, diasEntre,
     novoDia,
     energiaAgua, energiaRefeicoes, energiaPassos, energiaTreino, recalcularDia, energiaDia,
-    faixaFolhas, bonusSequencia, folhasDoDia, estagioIdx, estagio,
+    faixaFolhas, bonusSequencia, folhasDoDia, estagioIdx, estagio, diasDeProgresso,
     sonecasDisponiveis, avaliarVirada, concederFolhas,
     simular,
   };

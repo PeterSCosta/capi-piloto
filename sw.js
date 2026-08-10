@@ -4,7 +4,7 @@
    handler de fetch para o porquê.
 
    Ao mexer em qualquer arquivo do SHELL, suba a VERSAO — é o que limpa o cache antigo. */
-const VERSAO = 'v2';
+const VERSAO = 'v3';
 const CACHE = `capi-${VERSAO}`;
 
 const SHELL = [
@@ -12,6 +12,7 @@ const SHELL = [
   'index.html',
   'css/styles.css',
   'js/economia.js',
+  'js/telemetria.js',
   'js/frases.js',
   'js/pets.js',
   'js/app.js',
