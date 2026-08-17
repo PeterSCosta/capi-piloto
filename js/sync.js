@@ -323,6 +323,38 @@
     return { ok: true };
   }
 
+  /** Preferências ficam no titular (não no aparelho): trocar de celular não pode religar tudo. */
+  async function lerPreferenciasDePush() {
+    if (!ativo() || !cfg.token) return null;
+    try { return await pedir('/push/preferencias'); } catch (_e) { return null; }
+  }
+
+  async function salvarPreferenciasDePush(prefs) {
+    if (!ativo() || !cfg.token) return null;
+    try { return await pedir('/push/preferencias', { metodo: 'PUT', corpo: prefs }); } catch (_e) { return null; }
+  }
+
+  /**
+   * Avisa que a pessoa abriu a notificação. Não é métrica de engajamento: é o que impede a Capi
+   * de calar um gatilho que ela na verdade estava respondendo.
+   */
+  async function avisarQueAbriuPush(gatilho) {
+    if (!ativo() || !cfg.token || !gatilho) return false;
+    try { await pedir('/push/abri', { metodo: 'POST', corpo: { gatilho } }); return true; }
+    catch (_e) { return false; }
+  }
+
+  /** App aberto pelo clique na notificação: ?abriu=GATILHO é consumido e some da URL. */
+  function consumirAberturaDePush() {
+    const url = new URL(location.href);
+    const gatilho = url.searchParams.get('abriu');
+    if (!gatilho) return null;
+    url.searchParams.delete('abriu');
+    history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+    avisarQueAbriuPush(gatilho);
+    return gatilho;
+  }
+
   async function desinscreverDePush() {
     try {
       const registro = await navigator.serviceWorker.ready;
@@ -359,6 +391,7 @@
     ativo, registrar, sincronizar, reconciliar, estado, limpar,
     pedirEntrada, confirmarEntrada, quemSouEu, entrarPeloLink,
     pushDisponivel, inscreverEmPush, desinscreverDePush,
+    lerPreferenciasDePush, salvarPreferenciasDePush, avisarQueAbriuPush, consumirAberturaDePush,
     entrarNaOrganizacao, sairDaOrganizacao, minhaOrganizacao,
     aoMudar: (fn) => { aoMudar = fn; },
   };

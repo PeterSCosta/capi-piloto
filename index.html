@@ -275,6 +275,18 @@
             <small>No máximo uma vez por dia, nunca de madrugada, e ela para se você ignorar.</small></span>
         </label>
       </p>
+      <div class="push-ajustes hidden" id="push-ajustes">
+        <p class="ob-note">Do que ela pode te lembrar:</p>
+        <label class="consent"><input type="checkbox" id="push-quer-agua" /><span>Água</span></label>
+        <label class="consent"><input type="checkbox" id="push-quer-refeicao" /><span>Refeição</span></label>
+        <label class="consent"><input type="checkbox" id="push-quer-resumo" /><span>Resumo da noite</span></label>
+        <div class="push-silencio">
+          <label for="push-silencio-inicio">Silêncio das</label>
+          <input id="push-silencio-inicio" type="time" step="900" />
+          <label for="push-silencio-fim">às</label>
+          <input id="push-silencio-fim" type="time" step="900" />
+        </div>
+      </div>
       <div class="conta-oferta" id="conta-oferta">
         <p class="ob-note">Quer abrir a mesma Capi em outro aparelho? Deixa um e-mail — sem senha,
           a gente manda um código.</p>

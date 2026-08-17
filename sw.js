@@ -4,7 +4,7 @@
    handler de fetch para o porquê.
 
    Ao mexer em qualquer arquivo do SHELL, suba a VERSAO — é o que limpa o cache antigo. */
-const VERSAO = 'v6';
+const VERSAO = 'v7';
 const CACHE = `capi-${VERSAO}`;
 
 const SHELL = [
@@ -70,17 +70,26 @@ self.addEventListener('push', (ev) => {
     icon: 'icones/icone-192.png',
     badge: 'icones/icone-192.png',
     tag: 'capi-' + (dados.gatilho || 'lembrete'),
-    data: { dia: dados.dia || null },
+    data: { dia: dados.dia || null, gatilho: dados.gatilho || null },
   }));
 });
 
+/* Abrir a notificação precisa chegar ao servidor: é o que devolve a voz ao gatilho. Cinco
+   ignorados seguidos e a Capi cala aquele lembrete — quem não responde está dizendo alguma coisa.
+   Com o app aberto vai por mensagem; fechado, viaja na URL e o app consome e limpa. */
 self.addEventListener('notificationclick', (ev) => {
   ev.notification.close();
+  const gatilho = (ev.notification.data && ev.notification.data.gatilho) || null;
   ev.waitUntil((async () => {
     const abertas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
     const nossa = abertas.find((c) => c.url.includes(self.registration.scope));
-    if (nossa) return nossa.focus();
-    return self.clients.openWindow(self.registration.scope);
+    if (nossa) {
+      if (gatilho) nossa.postMessage({ tipo: 'push-aberto', gatilho });
+      return nossa.focus();
+    }
+    return self.clients.openWindow(gatilho
+      ? `${self.registration.scope}?abriu=${encodeURIComponent(gatilho)}`
+      : self.registration.scope);
   })());
 });
 

@@ -467,6 +467,12 @@ small { color: var(--ink-soft); font-weight: 400; }
 .conta-atual { font-size: 13px; color: var(--ink-soft); }
 .conta-atual strong { color: var(--ink); }
 
+/* ═══ Ajustes de notificação (só aparecem depois de ligar) ═══ */
+.push-ajustes { display: flex; flex-direction: column; gap: 6px; padding-left: 32px; }
+.push-ajustes .ob-note { margin: 0; }
+.push-silencio { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink-soft); }
+.push-silencio input { flex: 1; min-width: 0; }
+
 /* ═══ Desafio da empresa (dobrado por padrão: quem não tem código não precisa nem ler) ═══ */
 .empresa { display: flex; flex-direction: column; gap: 8px; }
 .empresa-atual { font-size: 13px; color: var(--ink-soft); }

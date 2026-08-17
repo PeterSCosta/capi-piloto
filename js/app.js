@@ -196,14 +196,18 @@
     Sync.pushDisponivel().then((push) => {
       const linha = $('conta-push');
       linha.classList.toggle('hidden', !push.disponivel);
+      const ligado = push.disponivel && info.push && push.permissao === 'granted';
+      $('push-ajustes').classList.toggle('hidden', !ligado);
       if (!push.disponivel) return;
       const toggle = $('push-toggle');
-      toggle.checked = info.push && push.permissao === 'granted';
+      toggle.checked = ligado;
       toggle.disabled = push.permissao === 'denied';
       if (push.permissao === 'denied') {
         linha.querySelector('small').textContent =
           'Este navegador bloqueou notificações do Capi — dá para religar nas configurações dele.';
       }
+      /* de que ela pode falar e quando calar: mora no titular, então vem do servidor */
+      if (ligado) Sync.lerPreferenciasDePush().then(mostrarPreferenciasDePush);
     });
     /* desafio da empresa: quem está dentro vê o nome e a saída; quem não está nem abre a caixa */
     const naEmpresa = !!info.organizacao;
@@ -217,6 +221,28 @@
     $('perfil-sync-txt').textContent = info.pendentes
       ? `${info.pendentes} registro(s) esperando internet · último envio: ${quando}`
       : `Guardado no servidor · último envio: ${quando}`;
+  }
+
+  function mostrarPreferenciasDePush(p) {
+    if (!p) return;
+    $('push-quer-agua').checked = p.querAgua;
+    $('push-quer-refeicao').checked = p.querRefeicao;
+    $('push-quer-resumo').checked = p.querResumo;
+    $('push-silencio-inicio').value = p.inicioDoSilencio;
+    $('push-silencio-fim').value = p.fimDoSilencio;
+  }
+
+  async function salvarPreferenciasDePush() {
+    const salvas = await Sync.salvarPreferenciasDePush({
+      ativo: true,
+      inicioDoSilencio: $('push-silencio-inicio').value || '22:00',
+      fimDoSilencio: $('push-silencio-fim').value || '07:30',
+      querAgua: $('push-quer-agua').checked,
+      querRefeicao: $('push-quer-refeicao').checked,
+      querResumo: $('push-quer-resumo').checked,
+    });
+    if (salvas) mostrarPreferenciasDePush(salvas);
+    else toast('Não consegui salvar agora — tenta daqui a pouco');
   }
 
   /* ═══ Marcos: o motor concede, a UI narra ═══ */
@@ -924,6 +950,10 @@
       }
     });
 
+    ['push-quer-agua', 'push-quer-refeicao', 'push-quer-resumo',
+      'push-silencio-inicio', 'push-silencio-fim']
+      .forEach((id) => $(id).addEventListener('change', salvarPreferenciasDePush));
+
     /* ── desafio da empresa ── */
     $('empresa-form').addEventListener('submit', async (ev) => {
       ev.preventDefault();
@@ -1049,6 +1079,13 @@
       Sync.quemSouEu().then(() => renderSync());
       /* o vínculo com a empresa é do titular, não deste aparelho: o segundo aparelho pergunta */
       Sync.minhaOrganizacao().then(() => renderSync());
+      /* clique na notificação com o app fechado: o gatilho volta a ter voz */
+      Sync.consumirAberturaDePush();
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.addEventListener('message', (ev) => {
+          if (ev.data && ev.data.tipo === 'push-aberto') Sync.avisarQueAbriuPush(ev.data.gatilho);
+        });
+      }
       sincronizar(true);
       window.addEventListener('online', () => sincronizar(true));
       setInterval(() => sincronizar(true), 5 * 60 * 1000);
