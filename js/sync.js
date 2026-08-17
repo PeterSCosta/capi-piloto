@@ -233,6 +233,61 @@
     }
   }
 
+  /* ── push (Web Push) ──
+     A permissão é pedida no MOMENTO em que a pessoa toca no botão, nunca no boot: no iOS a negação
+     é permanente por origem, e no Android pedir cedo queima a chance. E só existe em PWA já
+     instalado no iOS — por isso o app pergunta ao servidor antes de oferecer. */
+
+  const base64ParaBytes = (base64) => {
+    const normal = (base64 + '='.repeat((4 - (base64.length % 4)) % 4)).replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(normal), (c) => c.charCodeAt(0));
+  };
+
+  async function pushDisponivel() {
+    if (!ativo() || !('serviceWorker' in navigator) || !('PushManager' in window)) return { disponivel: false };
+    try {
+      const estadoDoServidor = await pedir('/push/estado');
+      return { ...estadoDoServidor, permissao: Notification.permission };
+    } catch (_e) { return { disponivel: false }; }
+  }
+
+  async function inscreverEmPush() {
+    const info = await pushDisponivel();
+    if (!info.disponivel || !info.chavePublica) return { ok: false, motivo: 'indisponivel' };
+
+    const permissao = await Notification.requestPermission();
+    if (permissao !== 'granted') return { ok: false, motivo: 'negada' };
+
+    const registro = await navigator.serviceWorker.ready;
+    const inscricao = await registro.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64ParaBytes(info.chavePublica),
+    });
+    const bruto = inscricao.toJSON();
+    await pedir('/push/inscrever', {
+      metodo: 'POST',
+      corpo: {
+        endpoint: bruto.endpoint,
+        chaveP256dh: bruto.keys.p256dh,
+        chaveAuth: bruto.keys.auth,
+      },
+    });
+    cfg.push = true;
+    salvarCfg();
+    return { ok: true };
+  }
+
+  async function desinscreverDePush() {
+    try {
+      const registro = await navigator.serviceWorker.ready;
+      const inscricao = await registro.pushManager.getSubscription();
+      if (inscricao) await inscricao.unsubscribe();
+      await pedir('/push/inscrever', { metodo: 'DELETE' });
+    } catch (e) { console.warn('[push]', e.message); }
+    cfg.push = false;
+    salvarCfg();
+  }
+
   function estado() {
     return {
       ativo: ativo(),
@@ -241,6 +296,7 @@
       ultimoEm: cfg ? cfg.ultimoEm || null : null,
       dispositivoId: cfg ? cfg.dispositivoId : null,
       email: cfg ? cfg.email || null : null,
+      push: !!(cfg && cfg.push),
     };
   }
 
@@ -255,6 +311,7 @@
   window.CapiSync = {
     ativo, registrar, sincronizar, reconciliar, estado, limpar,
     pedirEntrada, confirmarEntrada, quemSouEu, entrarPeloLink,
+    pushDisponivel, inscreverEmPush, desinscreverDePush,
     aoMudar: (fn) => { aoMudar = fn; },
   };
 })();

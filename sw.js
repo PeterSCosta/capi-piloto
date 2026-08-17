@@ -4,7 +4,7 @@
    handler de fetch para o porquê.
 
    Ao mexer em qualquer arquivo do SHELL, suba a VERSAO — é o que limpa o cache antigo. */
-const VERSAO = 'v4';
+const VERSAO = 'v5';
 const CACHE = `capi-${VERSAO}`;
 
 const SHELL = [
@@ -42,6 +42,46 @@ self.addEventListener('activate', (ev) => {
       .then((nomes) => Promise.all(nomes.filter((n) => n !== CACHE).map((n) => caches.delete(n))))
       .then(() => self.clients.claim()),
   );
+});
+
+/* ═══ Push ═══
+   O payload carrega só { gatilho, variante, dia } — nenhuma palavra sobre o hábito da pessoa. O
+   serviço de push vê tamanho e horário mesmo sem ler o corpo cifrado; uma frase sobre a rotina de
+   alguém ali seria dado de saúde saindo por metadado. O texto é montado AQUI, do MESMO pacote de
+   falas do app — assim as notificações passam pelo lint anti-culpa como todo o resto. */
+importScripts('js/frases.js');
+
+const GATILHO_PARA_FALA = {
+  LembreteDeAgua: 'push_agua',
+  LembreteDeRefeicao: 'push_refeicao',
+  ResumoDaNoite: 'push_resumo',
+  VoltaSemCulpa: 'push_volta',
+};
+
+self.addEventListener('push', (ev) => {
+  let dados = {};
+  try { dados = ev.data ? ev.data.json() : {}; } catch (_e) { /* payload estranho: usa o padrão */ }
+  const chave = GATILHO_PARA_FALA[dados.gatilho] || 'push_agua';
+  const falas = (FRASES.capivara && FRASES.capivara[chave]) || ['Oi! Passei pra dar um alô.'];
+  const fala = falas[(dados.variante || 0) % falas.length];
+
+  ev.waitUntil(self.registration.showNotification('Capi', {
+    body: fala,
+    icon: 'icones/icone-192.png',
+    badge: 'icones/icone-192.png',
+    tag: 'capi-' + (dados.gatilho || 'lembrete'),
+    data: { dia: dados.dia || null },
+  }));
+});
+
+self.addEventListener('notificationclick', (ev) => {
+  ev.notification.close();
+  ev.waitUntil((async () => {
+    const abertas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const nossa = abertas.find((c) => c.url.includes(self.registration.scope));
+    if (nossa) return nossa.focus();
+    return self.clients.openWindow(self.registration.scope);
+  })());
 });
 
 self.addEventListener('fetch', (ev) => {

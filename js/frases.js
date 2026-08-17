@@ -121,6 +121,34 @@ const FRASES = {
       "Presente novo! Vou usar com muito orgulho e pouca pressa.",
       "Que capricho. Sou oficialmente a capivara mais elegante deste rio.",
       "Folhas bem gastas. Estilo assim não se acha em qualquer lagoa."
+    ],
+    "push_agua": [
+      "A garrafa tá te olhando. Só dizendo.",
+      "Uma aguinha? Eu espero, sou capivara.",
+      "Passei o dia no rio e lembrei de você.",
+      "Lembrete molhado: água existe e é de graça.",
+      "Sem pressa. Mas a água tá ali, ó."
+    ],
+    "push_refeicao": [
+      "Comeu? Me conta, sem julgamento.",
+      "Rango registrado é rango que conta.",
+      "Só quero saber se você comeu. Nada além disso.",
+      "Anota a refeição e some daqui, prometo.",
+      "Foi o que deu também vale. Registra aí."
+    ],
+    "push_resumo": [
+      "Fecha o dia comigo? Rapidinho.",
+      "Vem ver como foi o dia. Sem cobrança.",
+      "Passa aqui antes de dormir, é rápido.",
+      "Bora fechar o dia? Eu já tô de pijama.",
+      "Último chamado do dia, e é bem curtinho."
+    ],
+    "push_volta": [
+      "Também tirei uns dias de rio. Teu ritmo, tua regra.",
+      "Tá tudo aqui, guardadinho. Quando quiser.",
+      "Sem sermão: só passei pra dizer que tô aqui.",
+      "Nada se perdeu. Eu cuidei de tudo enquanto isso.",
+      "Voltar é fácil: um copo d'água e a gente conversa."
     ]
   }
 };

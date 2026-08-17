@@ -185,6 +185,21 @@
     $('conta-atual').classList.toggle('hidden', !temConta);
     $('conta-oferta').classList.toggle('hidden', temConta);
     if (temConta) $('conta-email').textContent = info.email;
+
+    /* o toggle só aparece onde push existe de verdade: prometer o que não chega é pior que não
+       oferecer, e no iOS a permissão negada é permanente por origem */
+    Sync.pushDisponivel().then((push) => {
+      const linha = $('conta-push');
+      linha.classList.toggle('hidden', !push.disponivel);
+      if (!push.disponivel) return;
+      const toggle = $('push-toggle');
+      toggle.checked = info.push && push.permissao === 'granted';
+      toggle.disabled = push.permissao === 'denied';
+      if (push.permissao === 'denied') {
+        linha.querySelector('small').textContent =
+          'Este navegador bloqueou notificações do Capi — dá para religar nas configurações dele.';
+      }
+    });
     const quando = info.ultimoEm
       ? new Date(info.ultimoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
       : 'ainda não';
@@ -846,6 +861,24 @@
       toast('Nova meta de passos vale a partir de amanhã');
     });
     /* ── conta: pedir código e confirmar ── */
+    $('push-toggle').addEventListener('change', async (ev) => {
+      if (ev.target.checked) {
+        const r = await Sync.inscreverEmPush();
+        if (!r.ok) {
+          ev.target.checked = false;
+          toast(r.motivo === 'negada'
+            ? 'Sem problema — a Capi fica quietinha'
+            : 'Notificação não está disponível aqui');
+          return;
+        }
+        Tel.registrar('abriu_perfil');
+        toast('Combinado. No máximo uma por dia.');
+      } else {
+        await Sync.desinscreverDePush();
+        toast('A Capi vai ficar na dela');
+      }
+    });
+
     $('conta-form-email').addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const email = $('conta-email-input').value.trim();
