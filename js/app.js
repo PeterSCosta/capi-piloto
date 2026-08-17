@@ -6,6 +6,7 @@
      Aqui ficam só a UI, o estado persistido e a narração dos eventos. */
   const Ec = window.Economia;
   const Tel = window.Telemetria;
+  const Sync = window.CapiSync;
   const R = Ec.REGRAS;
   const ESTAGIOS = R.ESTAGIOS;
   const SONECAS_POR_JANELA = R.SONECAS_POR_JANELA;
@@ -75,7 +76,10 @@
     h.aguaMl = n(h.aguaMl, 0); h.eAgua = n(h.eAgua, 0); h.eRef = n(h.eRef, 0);
     h.passos = n(h.passos, 0); h.ePassos = n(h.ePassos, 0); h.eTreino = n(h.eTreino, 0);
     h.registros = n(h.registros, 0);
-    h.aguaRegs = (h.aguaRegs || []).filter((ml) => Number.isFinite(ml) && ml > 0);
+    /* migração: o piloto guardava só o número; agora cada registro carrega o id do evento */
+    h.aguaRegs = (h.aguaRegs || [])
+      .map((r) => (typeof r === 'number' ? { id: null, ml: r } : r))
+      .filter((r) => r && Number.isFinite(r.ml) && r.ml > 0);
     h.refeicoes = h.refeicoes || { cafe: null, almoco: null, jantar: null };
     Ec.recalcularDia(h); /* caches por pilar são derivados: nunca confiar no que veio do storage */
     /* piloto passou a ter só a capivara: quem estava com outro pet mantém TODO o progresso */
@@ -132,6 +136,57 @@
     return true;
   }
 
+  /* ═══ Sync (opcional) ═══
+     Cada gesto vira evento na outbox local. Nada aqui espera rede: o registro já valeu no estado
+     local antes de sair do aparelho. Em modo demonstração não emite — o painel adianta o calendário
+     e "+7 dias completos" não pode virar Lendário no servidor. */
+  function emitir(tipo, payload) {
+    if (!Sync || !Sync.ativo()) return null;
+    return Sync.registrar(tipo, payload, S.hoje.data, { demo: S.simDias !== 0 });
+  }
+
+  /* Reconciliação: o servidor nunca abaixa número. Adota só o que ele sabe A MAIS (outro aparelho
+     registrou) e narra a diferença sem nunca mostrar perda. */
+  async function sincronizar(silencioso) {
+    if (!Sync || !Sync.ativo()) return;
+    const resultado = await Sync.sincronizar({
+      hoje: S.hoje.data,
+      apelido: S.nomePet || null,
+      convite: convidado ? convidado.convite : null,
+      abertura: {
+        folhasIniciais: S.folhas,
+        diasPresencaIniciais: S.diasPresenca,
+        diasCompletosIniciais: S.diasCompletos,
+        streakInicial: S.streak,
+      },
+    });
+    if (!resultado.ok) return;
+
+    const { adotar, divergencia } = Sync.reconciliar(S, resultado.estado);
+    if (Object.keys(adotar).length) {
+      Object.assign(S, adotar);
+      save();
+      renderTudo();
+      if (!silencioso) toast('Progresso de outro aparelho chegou');
+    }
+    if (divergencia) console.info('[sync] divergência', divergencia);
+    renderSync();
+  }
+
+  function renderSync() {
+    if (!Sync) return;
+    const linha = $('perfil-sync');
+    const info = Sync.estado();
+    if (!info.ativo) { linha.classList.add('hidden'); return; }
+    linha.classList.remove('hidden');
+    const quando = info.ultimoEm
+      ? new Date(info.ultimoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
+      : 'ainda não';
+    $('perfil-sync-txt').textContent = info.pendentes
+      ? `${info.pendentes} registro(s) esperando internet · último envio: ${quando}`
+      : `Guardado no servidor · último envio: ${quando}`;
+  }
+
   /* ═══ Marcos: o motor concede, a UI narra ═══ */
   function checarMarcos(opts) {
     const silencioso = opts && opts.silencioso;
@@ -166,7 +221,10 @@
   function registrarAgua(ml) {
     rollover();
     S.hoje.aguaMl += ml;
-    S.hoje.aguaRegs.push(ml);
+    /* guarda o id do evento junto: desfazer aponta para o ID, nunca para a posição na lista —
+       índice não sobrevive a dois aparelhos escrevendo o mesmo dia */
+    const idEvento = emitir('AguaRegistrada', { ml });
+    S.hoje.aguaRegs.push({ id: idEvento, ml });
     Ec.recalcularDia(S.hoje);
     S.hoje.registros += 1;
     Tel.registrar('registro_agua', { ml });
@@ -183,7 +241,9 @@
   function removerAgua(idx) {
     if (rollover()) { renderTudo(); renderSheetAgua(); toast('O dia virou — registros de hoje recomeçaram'); return; }
     if (idx < 0 || idx >= S.hoje.aguaRegs.length) return;
-    S.hoje.aguaMl -= S.hoje.aguaRegs[idx];
+    const reg = S.hoje.aguaRegs[idx];
+    S.hoje.aguaMl -= reg.ml;
+    if (reg.id) emitir('AguaDesfeita', { alvoId: reg.id });
     S.hoje.aguaRegs.splice(idx, 1);
     Ec.recalcularDia(S.hoje);
     S.hoje.registros = Math.max(0, S.hoje.registros - 1);
@@ -195,6 +255,7 @@
     rollover();
     if (!S.hoje.refeicoes[refId]) S.hoje.registros += 1;
     S.hoje.refeicoes[refId] = avalId;
+    emitir('RefeicaoAvaliada', { refeicao: refId, avaliacao: avalId });
     Ec.recalcularDia(S.hoje);
     Tel.registrar('registro_refeicao', { aval: avalId });
     fecharSheet();
@@ -206,7 +267,9 @@
   function setPassos(n) {
     rollover();
     const meta = S.hoje.metaPassos;
+    const antes = S.hoje.passos;
     S.hoje.passos = Math.max(0, n);
+    if (S.hoje.passos !== antes) emitir('PassosInformados', { passos: S.hoje.passos });
     Ec.recalcularDia(S.hoje);
     if (S.hoje.passos >= meta && !S.hoje.metaPassosBatida) {
       S.hoje.metaPassosBatida = true;
@@ -223,6 +286,7 @@
     rollover();
     if (S.hoje.treinou) { toast('Treino de hoje já registrado (teto 1/dia no MVP)'); return; }
     S.hoje.treinou = true;
+    emitir('TreinoRegistrado', {});
     Ec.recalcularDia(S.hoje);
     S.hoje.registros += 1;
     Tel.registrar('registro_treino');
@@ -380,10 +444,10 @@
     $('agua-meta').textContent = fmtNum(S.hoje.metaAgua) + ' ml';
     const box = $('agua-registros');
     box.innerHTML = S.hoje.aguaRegs.length ? '' : '<span class="sheet-meta">Nenhum registro hoje ainda.</span>';
-    S.hoje.aguaRegs.forEach((ml, i) => {
+    S.hoje.aguaRegs.forEach((reg, i) => {
       const chip = document.createElement('span');
       chip.className = 'agua-reg';
-      chip.innerHTML = `<span class="mono">${ml} ml</span>`;
+      chip.innerHTML = `<span class="mono">${reg.ml} ml</span>`;
       const rm = document.createElement('button');
       rm.textContent = '×';
       rm.title = 'Excluir registro';
@@ -553,6 +617,7 @@
 
   function renderPerfil() {
     renderRefeicoesCfg();
+    renderSync();
     const linhaConvite = $('perfil-convite');
     if (convidado && convidado.nome) {
       linhaConvite.classList.remove('hidden');
@@ -615,7 +680,7 @@
   function completarDiaAtual(silencioso) {
     rollover();
     while (S.hoje.aguaMl < S.hoje.metaAgua) {
-      S.hoje.aguaRegs.push(250);
+      S.hoje.aguaRegs.push({ id: null, ml: 250 });
       S.hoje.aguaMl += 250;
       S.hoje.registros += 1;
     }
@@ -762,6 +827,7 @@
     });
     $('cfg-agua').addEventListener('change', () => {
       S.metas.agua = Number($('cfg-agua').value);
+      emitir('MetasDefinidas', { metaAgua: S.metas.agua, metaPassos: S.metas.passos });
       save();
       toast('Nova meta de água vale a partir de amanhã');
     });
@@ -769,6 +835,7 @@
       /* meta do dia fica congelada (S.hoje.metaPassos): mudar config no meio do dia
          não pode conceder dia completo/streak/evolução retroativos */
       S.metas.passos = Number($('cfg-passos').value);
+      emitir('MetasDefinidas', { metaAgua: S.metas.agua, metaPassos: S.metas.passos });
       save();
       toast('Nova meta de passos vale a partir de amanhã');
     });
@@ -859,6 +926,13 @@
 
     initDemo();
 
+    /* sobe o que estiver pendente: ao abrir, ao voltar para o app e quando a internet volta */
+    if (Sync && Sync.ativo()) {
+      sincronizar(true);
+      window.addEventListener('online', () => sincronizar(true));
+      setInterval(() => sincronizar(true), 5 * 60 * 1000);
+    }
+
     /* PWA: instala na tela inicial e funciona offline (RNF04) */
     if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
       navigator.serviceWorker.register('sw.js').catch((e) => console.warn('[sw]', e));
@@ -899,7 +973,7 @@
     setInterval(() => { rollover(); renderTudo(); }, 60000);
     /* app retomado de suspensão: vira o dia antes de qualquer interação */
     document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) { rollover(); renderTudo(); }
+      if (!document.hidden) { rollover(); renderTudo(); sincronizar(true); }
     });
   }
 
