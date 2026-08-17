@@ -233,6 +233,52 @@
     }
   }
 
+  /* ── desafio da empresa (B2B) ──
+     O aceite é SEPARADO do resto: participar do desafio da empresa é outra finalidade, e a lei não
+     admite consentimento em pacote. O servidor recusa a entrada sem ele — aqui a checagem é só para
+     não gastar uma ida à rede. */
+
+  async function entrarNaOrganizacao(codigo, unidade, consinto) {
+    if (!ativo()) return { ok: false, motivo: 'inativo' };
+    if (!consinto) return { ok: false, motivo: 'sem-aceite' };
+    await garantirDispositivo({});
+    try {
+      const resposta = await pedir('/organizacoes/entrar', {
+        metodo: 'POST',
+        corpo: { codigo: (codigo || '').trim(), unidade: (unidade || '').trim() || null, consinto: true },
+      });
+      cfg.organizacao = resposta.organizacao;
+      salvarCfg();
+      return { ok: true, organizacao: resposta.organizacao };
+    } catch (erro) {
+      return { ok: false, motivo: /404/.test(erro.message) ? 'codigo' : erro.message };
+    }
+  }
+
+  /** Confere no servidor, porque o vínculo é do titular e não deste aparelho. */
+  async function minhaOrganizacao() {
+    if (!ativo() || !cfg.token) return null;
+    try {
+      const resposta = await pedir('/organizacoes/minha');
+      cfg.organizacao = resposta.organizacao || null;
+      salvarCfg();
+      return cfg.organizacao;
+    } catch (_e) { return cfg.organizacao || null; }
+  }
+
+  /** Sair é imediato e sem pergunta de retenção: consentimento que não se revoga não é consentimento. */
+  async function sairDaOrganizacao() {
+    if (!ativo()) return { ok: false, motivo: 'inativo' };
+    try {
+      await pedir('/organizacoes/sair', { metodo: 'DELETE' });
+    } catch (erro) {
+      return { ok: false, motivo: erro.message };
+    }
+    cfg.organizacao = null;
+    salvarCfg();
+    return { ok: true };
+  }
+
   /* ── push (Web Push) ──
      A permissão é pedida no MOMENTO em que a pessoa toca no botão, nunca no boot: no iOS a negação
      é permanente por origem, e no Android pedir cedo queima a chance. E só existe em PWA já
@@ -297,6 +343,7 @@
       dispositivoId: cfg ? cfg.dispositivoId : null,
       email: cfg ? cfg.email || null : null,
       push: !!(cfg && cfg.push),
+      organizacao: cfg ? cfg.organizacao || null : null,
     };
   }
 
@@ -312,6 +359,7 @@
     ativo, registrar, sincronizar, reconciliar, estado, limpar,
     pedirEntrada, confirmarEntrada, quemSouEu, entrarPeloLink,
     pushDisponivel, inscreverEmPush, desinscreverDePush,
+    entrarNaOrganizacao, sairDaOrganizacao, minhaOrganizacao,
     aoMudar: (fn) => { aoMudar = fn; },
   };
 })();

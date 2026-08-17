@@ -296,6 +296,34 @@
           <p class="ob-note" id="conta-aviso">Olha o código no seu e-mail — ele vale 15 minutos.</p>
         </form>
       </div>
+      <div class="empresa" id="perfil-empresa">
+        <p class="empresa-atual hidden" id="empresa-atual">
+          No desafio da <strong id="empresa-nome">—</strong>
+          <button type="button" class="link-btn" id="btn-sair-empresa">sair do desafio</button>
+        </p>
+        <details class="empresa-oferta" id="empresa-oferta">
+          <summary>Tenho um código de desafio da empresa</summary>
+          <p class="ob-note">Sua empresa vê só números somados do grupo, com no mínimo 10 pessoas por
+            recorte — nunca o seu dia, nem se você participou. Se o grupo ficar menor que isso, o
+            número simplesmente não existe.</p>
+          <form id="empresa-form">
+            <label class="consent">
+              <input type="checkbox" id="empresa-consinto" />
+              <span>Quero entrar no desafio da minha empresa
+                <small>Este aceite é só para isso, e você pode sair quando quiser.</small></span>
+            </label>
+            <div class="conta-linha">
+              <label class="sr-only" for="empresa-codigo">Código da empresa</label>
+              <input id="empresa-codigo" class="mono" type="text" maxlength="24" autocomplete="off"
+                     placeholder="código da empresa" />
+              <button class="btn btn-ghost" type="submit">Entrar</button>
+            </div>
+            <label class="sr-only" for="empresa-unidade">Setor ou unidade (opcional)</label>
+            <input id="empresa-unidade" type="text" maxlength="40" autocomplete="off"
+                   placeholder="setor ou unidade (opcional)" />
+          </form>
+        </details>
+      </div>
     </div>
     <p class="perfil-convite hidden" id="perfil-convite">
       Piloto como <strong id="perfil-convite-nome">—</strong>
@@ -308,8 +336,8 @@
     </div>
     <input type="file" id="arquivo-import" accept="application/json,.json" class="hidden" />
     <button class="btn btn-danger-ghost" id="btn-excluir">Excluir tudo deste aparelho</button>
-    <p class="ob-note">Seus dados vivem só neste aparelho — se você limpar o navegador, some.
-      Salve um backup de vez em quando.
+    <p class="ob-note"><span id="perfil-onde-vive">Seus dados vivem só neste aparelho — se você
+      limpar o navegador, some. Salve um backup de vez em quando.</span>
       <button type="button" class="link-btn" id="btn-privacidade">Privacidade e saúde</button></p>
   </section>
 
@@ -324,9 +352,26 @@
       histórico de uso do app. Também o nome que veio no seu convite.</p>
 
     <h4 class="doc-h">Onde isso fica</h4>
-    <p class="doc-p">Só no armazenamento deste navegador, neste aparelho. Não existe servidor, conta
-      nem sincronização: <strong>nada é enviado automaticamente para ninguém</strong>. A consequência
-      honesta disso é que limpar o navegador apaga tudo — por isso existe o backup.</p>
+    <p class="doc-p">Sempre no armazenamento deste navegador — é ele a fonte da verdade, e por isso o
+      app funciona sem internet. Se a sincronização estiver ligada no seu aparelho, uma cópia do seu
+      diário também fica no servidor do Capi, para o progresso não morrer junto com o navegador e
+      para você abrir a mesma Capi em outro aparelho. Sem sincronização, limpar o navegador apaga
+      tudo — por isso existe o backup.</p>
+
+    <h4 class="doc-h">Conta e notificações</h4>
+    <p class="doc-p">A conta é opcional e sem senha: você deixa um e-mail e a gente manda um código.
+      O e-mail serve só para você voltar — não vira lista nem propaganda. As notificações também são
+      opcionais e só ligam se você marcar: no máximo uma por dia, nunca de madrugada, e elas param
+      sozinhas se você não responder. O texto do lembrete é montado no seu aparelho —
+      <strong>nada sobre a sua rotina viaja na notificação</strong>.</p>
+
+    <h4 class="doc-h">Se sua empresa participa</h4>
+    <p class="doc-p">Entrar no desafio da empresa é um aceite <strong>separado</strong>, feito por
+      você no perfil, e revogável a qualquer momento. A empresa vê apenas números somados do grupo,
+      com <strong>no mínimo 10 pessoas por recorte</strong>, e mesmo o total de participantes aparece
+      em faixa, nunca exato. Ela não vê o seu dia, não vê o que você registrou e não tem como saber
+      se você participou ou desistiu. Se o grupo ficar menor que 10, o número não é escondido: ele
+      não chega a ser calculado.</p>
 
     <h4 class="doc-h">O que a equipe do piloto vê</h4>
     <p class="doc-p">Nada, a não ser o que você mandar. Quando você toca em "mandar feedback", o

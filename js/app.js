@@ -180,6 +180,11 @@
     if (!info.ativo) { bloco.classList.add('hidden'); return; }
     bloco.classList.remove('hidden');
 
+    /* com sync ligado a frase de sempre vira mentira: o diário TAMBÉM está no servidor */
+    $('perfil-onde-vive').textContent = 'Seus registros ficam neste aparelho e também guardados no '
+      + 'servidor do Capi — abrir em outro aparelho é só entrar com o mesmo e-mail. O backup '
+      + 'continua valendo para levar tudo embora.';
+
     /* a conta é oferecida, nunca exigida: quem não quer segue com tudo funcionando */
     const temConta = !!info.email;
     $('conta-atual').classList.toggle('hidden', !temConta);
@@ -200,6 +205,12 @@
           'Este navegador bloqueou notificações do Capi — dá para religar nas configurações dele.';
       }
     });
+    /* desafio da empresa: quem está dentro vê o nome e a saída; quem não está nem abre a caixa */
+    const naEmpresa = !!info.organizacao;
+    $('empresa-atual').classList.toggle('hidden', !naEmpresa);
+    $('empresa-oferta').classList.toggle('hidden', naEmpresa);
+    if (naEmpresa) $('empresa-nome').textContent = info.organizacao;
+
     const quando = info.ultimoEm
       ? new Date(info.ultimoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
       : 'ainda não';
@@ -913,6 +924,35 @@
       }
     });
 
+    /* ── desafio da empresa ── */
+    $('empresa-form').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const codigo = $('empresa-codigo').value.trim();
+      const unidade = $('empresa-unidade').value.trim();
+      const consinto = $('empresa-consinto').checked;
+      if (!codigo) { toast('Cola o código que a empresa te deu'); return; }
+      /* o aceite é separado de propósito: entrar no desafio é outra finalidade */
+      if (!consinto) { toast('Marca o aceite para entrar no desafio'); return; }
+
+      const r = await Sync.entrarNaOrganizacao(codigo, unidade, consinto);
+      if (!r.ok) {
+        toast(r.motivo === 'codigo' ? 'Não reconheci esse código' : 'Não consegui agora. Tenta daqui a pouco.');
+        return;
+      }
+      $('empresa-codigo').value = '';
+      $('empresa-consinto').checked = false;
+      renderSync();
+      toast(`Você está no desafio da ${r.organizacao}`);
+    });
+
+    $('btn-sair-empresa').addEventListener('click', async () => {
+      /* sair não pergunta duas vezes nem tenta reter: consentimento que não se revoga não é consentimento */
+      const r = await Sync.sairDaOrganizacao();
+      if (!r.ok) { toast('Não consegui agora. Tenta daqui a pouco.'); return; }
+      renderSync();
+      toast('Saiu do desafio. Sua Capi segue igual.');
+    });
+
     $('ref-nova').addEventListener('submit', (ev) => {
       ev.preventDefault();
       const nome = $('ref-nome').value.trim();
@@ -1007,6 +1047,8 @@
         if (ligada) { renderSync(); toast('Entrou na sua conta'); }
       });
       Sync.quemSouEu().then(() => renderSync());
+      /* o vínculo com a empresa é do titular, não deste aparelho: o segundo aparelho pergunta */
+      Sync.minhaOrganizacao().then(() => renderSync());
       sincronizar(true);
       window.addEventListener('online', () => sincronizar(true));
       setInterval(() => sincronizar(true), 5 * 60 * 1000);

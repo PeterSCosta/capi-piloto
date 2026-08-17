@@ -466,3 +466,15 @@ small { color: var(--ink-soft); font-weight: 400; }
 .conta-linha .btn { flex-shrink: 0; }
 .conta-atual { font-size: 13px; color: var(--ink-soft); }
 .conta-atual strong { color: var(--ink); }
+
+/* ═══ Desafio da empresa (dobrado por padrão: quem não tem código não precisa nem ler) ═══ */
+.empresa { display: flex; flex-direction: column; gap: 8px; }
+.empresa-atual { font-size: 13px; color: var(--ink-soft); }
+.empresa-atual strong { color: var(--ink); }
+.empresa-oferta > summary {
+  font-size: 13px; color: var(--ink-soft); cursor: pointer; padding: 4px 0; list-style: none;
+}
+.empresa-oferta > summary::-webkit-details-marker { display: none; }
+.empresa-oferta > summary::before { content: '+ '; color: var(--verde); font-weight: 700; }
+.empresa-oferta[open] > summary::before { content: '– '; }
+.empresa-oferta form { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
