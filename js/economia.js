@@ -135,15 +135,36 @@
     return Math.max(0, REGRAS.SONECAS_POR_JANELA - usadas);
   }
 
+  /* Último dia que a sequência considera "coberto": o último completo OU a última soneca já gasta.
+     Sem isto, os mesmos dias perdidos são recontados a cada virada — quem abre o app todos os dias
+     gasta as duas sonecas em dois dias e quebra a sequência, enquanto quem some não gasta nenhuma.
+     Ou seja: usar mais o app punia. */
+  function referenciaDaSequencia(estado) {
+    let ref = estado.ultimoCompleto;
+    for (const d of estado.sonecas || []) {
+      if (!ref || diasEntre(ref, d) > 0) ref = d;
+    }
+    return ref;
+  }
+
+  /* Descarta sonecas que já saíram da janela: sem isto o array cresce para sempre e vai junto
+     no backup e no futuro payload de sync. */
+  function podarSonecas(sonecas, hoje) {
+    return (sonecas || []).filter((d) => diasEntre(d, hoje) < REGRAS.SONECA_JANELA_DIAS);
+  }
+
   /* Decide o destino da sequência na virada do dia, sem mutar nada.
      'soneca' → dias perdidos cobertos automática e retroativamente; 'quebra' → só o bônus volta ao início. */
   function avaliarVirada(estado, hoje) {
     const res = { tipo: 'nada', streak: estado.streak, sonecasNovas: [] };
-    if (!(estado.streak > 0) || !estado.ultimoCompleto) return res;
-    const perdidos = diasEntre(estado.ultimoCompleto, hoje) - 1;
+    if (!(estado.streak > 0)) return res;
+    const referencia = referenciaDaSequencia(estado);
+    if (!referencia) return res;
+    /* só os dias AINDA não cobertos contam */
+    const perdidos = diasEntre(referencia, hoje) - 1;
     if (perdidos <= 0) return res;
     if (perdidos <= sonecasDisponiveis(estado.sonecas, hoje)) {
-      for (let i = 1; i <= perdidos; i++) res.sonecasNovas.push(somaDias(estado.ultimoCompleto, i));
+      for (let i = 1; i <= perdidos; i++) res.sonecasNovas.push(somaDias(referencia, i));
       res.tipo = 'soneca';
     } else {
       res.tipo = 'quebra';
@@ -247,6 +268,7 @@
       const virada = avaliarVirada(estado, data);
       estado.streak = virada.streak;
       virada.sonecasNovas.forEach((d) => estado.sonecas.push(d));
+      estado.sonecas = podarSonecas(estado.sonecas, data);
 
       const dia = novoDia(data, metas.passos, metas.agua);
       if (rand() < p.presenca) {
@@ -291,7 +313,7 @@
     novoDia,
     energiaAgua, energiaRefeicoes, energiaPassos, energiaTreino, recalcularDia, energiaDia,
     faixaFolhas, bonusSequencia, folhasDoDia, estagioIdx, estagio, diasDeProgresso,
-    sonecasDisponiveis, avaliarVirada, concederFolhas,
+    sonecasDisponiveis, avaliarVirada, referenciaDaSequencia, podarSonecas, concederFolhas,
     simular,
   };
 });

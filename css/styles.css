@@ -126,6 +126,8 @@ small { color: var(--ink-soft); font-weight: 400; }
 .st-feliz .eyes-open, .st-feliz .mouth-smile { display: block; }
 .st-molenga .eyes-half, .st-molenga .mouth-flat { display: block; }
 .st-comemorando .eyes-open, .st-comemorando .mouth-open { display: block; }
+/* dia épico (barra em 100): sorriso aberto e um balanço lento — distinto do "feliz" dos 50 */
+.st-epico .eyes-open, .st-epico .mouth-smile { display: block; }
 .st-dormindo .eyes-closed, .st-dormindo .mouth-flat, .st-dormindo .zzz { display: block; }
 .st-comendo .eyes-open, .st-comendo .mouth-open { display: block; }
 
@@ -133,6 +135,7 @@ small { color: var(--ink-soft); font-weight: 400; }
 .pet-holder.st-neutro { animation: bob 4s ease-in-out infinite; }
 .pet-holder.st-molenga { transform: translateX(-50%) scaleY(.88) translateY(5%); filter: saturate(.85); }
 .pet-holder.st-comemorando { animation: party .55s ease-in-out infinite; }
+.pet-holder.st-epico { animation: party 1.6s ease-in-out infinite; }
 .pet-holder.st-dormindo { animation: breathe 3.5s ease-in-out infinite; filter: brightness(.92); }
 .pet-holder.st-comendo { animation: chomp .35s ease-in-out 4; }
 
@@ -436,3 +439,23 @@ small { color: var(--ink-soft); font-weight: 400; }
   }
   .pet-holder { animation: none !important; }
 }
+
+/* ═══ Água: valor livre sem prompt nativo ═══ */
+.agua-outro { display: flex; gap: 8px; align-items: center; }
+.agua-outro input { text-align: center; }
+.agua-outro .btn { flex-shrink: 0; }
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* ═══ Refeições configuráveis (GDD §4.2) ═══ */
+.refeicoes-cfg { display: flex; flex-direction: column; gap: 6px; }
+.ref-linha {
+  display: flex; align-items: center; gap: 8px; background: var(--card);
+  border: 1.5px solid var(--line); border-radius: var(--radius-sm); padding: 8px 10px;
+}
+.ref-linha span { flex: 1; font-size: 14px; }
+.ref-linha button { color: var(--coral); font-weight: 800; font-size: 16px; padding: 8px 10px; margin: -8px -6px; }
+.ref-nova { display: flex; gap: 8px; }
+.ref-nova .btn { flex-shrink: 0; }

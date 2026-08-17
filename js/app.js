@@ -12,11 +12,15 @@
   /* o piloto tem uma capivara só; a chave fica para um pet novo entrar sem refatorar */
   const PET = 'capivara';
   const NOME_PADRAO = 'Capi';
-  const REFEICOES = [
+  const REFEICOES_PADRAO = [
     { id: 'cafe', nome: 'Café da manhã' },
     { id: 'almoco', nome: 'Almoço' },
     { id: 'jantar', nome: 'Jantar' },
   ];
+  /* a lista do DIA fica congelada junto com as metas: mudar a configuração no meio do dia não pode
+     mexer no que já foi registrado nem no teto que já valia */
+  const refeicoesDoDia = () => (S.hoje.refeicoesLista && S.hoje.refeicoesLista.length
+    ? S.hoje.refeicoesLista : REFEICOES_PADRAO);
   const AVALIACOES = [
     { id: 'bem', nome: 'Mandei bem', pts: R.REF.bem },
     { id: 'meio', nome: 'Meio termo', pts: R.REF.meio },
@@ -34,6 +38,7 @@
     return {
       v: 2, pet: PET, nomePet: '', configurado: false,
       metas: { agua: R.METAS_DEFAULT.agua, passos: R.METAS_DEFAULT.passos },
+      refeicoes: REFEICOES_PADRAO.map((r) => ({ ...r })),
       folhas: 0, diasCompletos: 0, diasPresenca: 0, streak: 0, ultimoCompleto: null,
       hoje: novoDia(hojeStr(0), R.METAS_DEFAULT.passos, R.METAS_DEFAULT.agua),
       historico: {},
@@ -77,6 +82,13 @@
     if (S.pet !== PET) S.pet = PET;
     /* estado de antes do flag explícito: quem já deu nome ao pet passou pelo onboarding */
     if (typeof S.configurado !== 'boolean') S.configurado = !!S.nomePet;
+    S.refeicoes = Array.isArray(S.refeicoes) && S.refeicoes.length
+      ? S.refeicoes.filter((r) => r && r.id && r.nome)
+      : REFEICOES_PADRAO.map((r) => ({ ...r }));
+    if (!Array.isArray(h.refeicoesLista) || !h.refeicoesLista.length) {
+      h.refeicoesLista = S.refeicoes.map((r) => ({ ...r }));
+    }
+    h.refeicoesLista.forEach((r) => { if (!(r.id in h.refeicoes)) h.refeicoes[r.id] = null; });
     S.equip = S.equip || { chapeu: null, oculos: null, pescoco: null, cenario: [] };
     S.equip.cenario = S.equip.cenario || [];
     S.ultimaFrase = S.ultimaFrase || {};
@@ -109,9 +121,13 @@
     const virada = Ec.avaliarVirada(S, hoje);
     S.streak = virada.streak;
     virada.sonecasNovas.forEach((d) => S.sonecas.push(d));
+    S.sonecas = Ec.podarSonecas(S.sonecas, hoje);
     if (virada.tipo === 'soneca') { S.pendSonecaMsg = true; Tel.registrar('soneca_usada', { dias: virada.sonecasNovas.length }); }
     if (virada.tipo === 'quebra') { S.pendStreakMsg = true; Tel.registrar('sequencia_perdida'); }
     S.hoje = novoDia(hoje, S.metas.passos, S.metas.agua);
+    S.hoje.refeicoesLista = (S.refeicoes || REFEICOES_PADRAO).map((r) => ({ ...r }));
+    S.hoje.refeicoes = {};
+    S.hoje.refeicoesLista.forEach((r) => { S.hoje.refeicoes[r.id] = null; });
     save();
     return true;
   }
@@ -266,8 +282,8 @@
     if (tempState) return tempState;
     if (ehNoite()) return 'dormindo';
     const e = energiaHoje();
-    if (e >= 100) return 'feliz';
-    if (e >= 50) return 'feliz';
+    if (e >= R.BARRA_MAX) return 'epico';
+    if (e >= R.PARCIAL_EM) return 'feliz';
     if (S.hoje.registros > 0 || e > 0) return 'neutro';
     return 'molenga';
   }
@@ -300,7 +316,8 @@
     const bar = document.querySelector('.energy-bar');
     if (bar) bar.setAttribute('aria-valuenow', total);
     $('qb-agua-sub').textContent = fmtNum(S.hoje.aguaMl) + ' ml';
-    $('qb-ref-sub').textContent = REFEICOES.filter((r) => S.hoje.refeicoes[r.id]).length + '/3';
+    const lista = refeicoesDoDia();
+    $('qb-ref-sub').textContent = `${lista.filter((r) => S.hoje.refeicoes[r.id]).length}/${lista.length}`;
     $('qb-mov-sub').textContent = fmtNum(S.hoje.passos) + ' passos';
   }
   function renderTudo() {
@@ -379,7 +396,7 @@
   function renderSheetRef() {
     const box = $('ref-lista');
     box.innerHTML = '';
-    REFEICOES.forEach((r) => {
+    refeicoesDoDia().forEach((r) => {
       const feito = S.hoje.refeicoes[r.id];
       const div = document.createElement('div');
       div.className = 'ref-item';
@@ -505,7 +522,37 @@
     }
   }
 
+  const slugRefeicao = (nome) => nome.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24);
+
+  function renderRefeicoesCfg() {
+    const box = $('refeicoes-cfg');
+    box.innerHTML = '';
+    S.refeicoes.forEach((r, i) => {
+      const linha = document.createElement('div');
+      linha.className = 'ref-linha';
+      const nome = document.createElement('span');
+      nome.textContent = r.nome;
+      linha.appendChild(nome);
+      if (S.refeicoes.length > 1) {
+        const rm = document.createElement('button');
+        rm.type = 'button';
+        rm.textContent = '×';
+        rm.setAttribute('aria-label', `Remover ${r.nome}`);
+        rm.addEventListener('click', () => {
+          S.refeicoes.splice(i, 1);
+          save();
+          renderRefeicoesCfg();
+          toast('Vale a partir de amanhã');
+        });
+        linha.appendChild(rm);
+      }
+      box.appendChild(linha);
+    });
+  }
+
   function renderPerfil() {
+    renderRefeicoesCfg();
     const linhaConvite = $('perfil-convite');
     if (convidado && convidado.nome) {
       linhaConvite.classList.remove('hidden');
@@ -572,7 +619,7 @@
       S.hoje.aguaMl += 250;
       S.hoje.registros += 1;
     }
-    REFEICOES.forEach((r) => {
+    refeicoesDoDia().forEach((r) => {
       if (!S.hoje.refeicoes[r.id]) S.hoje.registros += 1;
       S.hoje.refeicoes[r.id] = 'bem';
     });
@@ -673,20 +720,32 @@
 
     document.querySelectorAll('.btn-agua').forEach((b) => {
       b.addEventListener('click', () => {
-        let ml = b.dataset.ml;
-        if (ml === 'custom') {
-          const v = prompt('Quantos ml?', '300');
-          if (!v) return;
-          ml = parseInt(v, 10);
-          if (!ml || ml < R.AGUA_MIN_REGISTRO || ml > R.AGUA_MAX_REGISTRO) {
-            toast(`Entre ${R.AGUA_MIN_REGISTRO} e ${R.AGUA_MAX_REGISTRO} ml`); return;
-          }
-        } else {
-          ml = Number(ml);
+        /* nada de window.prompt: é bloqueado em webview (Instagram, WhatsApp) e leitor de tela
+           não anuncia. O campo mora no próprio sheet. */
+        if (b.dataset.ml === 'custom') {
+          const form = $('agua-outro');
+          const abrindo = form.classList.contains('hidden');
+          form.classList.toggle('hidden', !abrindo);
+          b.setAttribute('aria-expanded', String(abrindo));
+          if (abrindo) $('agua-ml').focus();
+          return;
         }
-        registrarAgua(ml);
+        registrarAgua(Number(b.dataset.ml));
         renderSheetAgua();
       });
+    });
+    $('agua-outro').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const ml = parseInt($('agua-ml').value, 10);
+      if (!ml || ml < R.AGUA_MIN_REGISTRO || ml > R.AGUA_MAX_REGISTRO) {
+        toast(`Entre ${R.AGUA_MIN_REGISTRO} e ${R.AGUA_MAX_REGISTRO} ml`);
+        return;
+      }
+      $('agua-ml').value = '';
+      $('agua-outro').classList.add('hidden');
+      document.querySelector('.btn-agua[data-ml="custom"]').setAttribute('aria-expanded', 'false');
+      registrarAgua(ml);
+      renderSheetAgua();
     });
 
     $('btn-treino').addEventListener('click', treinar);
@@ -712,6 +771,20 @@
       S.metas.passos = Number($('cfg-passos').value);
       save();
       toast('Nova meta de passos vale a partir de amanhã');
+    });
+    $('ref-nova').addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const nome = $('ref-nome').value.trim();
+      if (!nome) return;
+      const id = slugRefeicao(nome);
+      if (!id) { toast('Dá um nome com letras, vai'); return; }
+      if (S.refeicoes.some((r) => r.id === id)) { toast('Essa já está na lista'); return; }
+      if (S.refeicoes.length >= 8) { toast('Oito refeições já é bastante, né?'); return; }
+      S.refeicoes.push({ id, nome });
+      $('ref-nome').value = '';
+      save();
+      renderRefeicoesCfg();
+      toast('Vale a partir de amanhã');
     });
     $('btn-sair').addEventListener('click', () => {
       if (confirm('Sair do piloto neste aparelho? Seu progresso fica salvo aqui.')) window.PetAcesso.sair();

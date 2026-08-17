@@ -166,15 +166,20 @@
     <div class="agua-btns">
       <button class="btn-agua" data-ml="250"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Copo</strong><span class="mono">250 ml</span></button>
       <button class="btn-agua" data-ml="500"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Garrafa</strong><span class="mono">500 ml</span></button>
-      <button class="btn-agua" data-ml="custom"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Outro</strong><span class="mono">? ml</span></button>
+      <button class="btn-agua" data-ml="custom" aria-expanded="false" aria-controls="agua-outro"><svg viewBox="0 0 24 24" class="agua-drop"><path d="M12 2s6 7.5 6 12a6 6 0 0 1-12 0C6 9.5 12 2 12 2z" fill="currentColor"/></svg><strong>Outro</strong><span class="mono">? ml</span></button>
     </div>
+    <form class="agua-outro hidden" id="agua-outro">
+      <label class="sr-only" for="agua-ml">Quantos ml?</label>
+      <input id="agua-ml" class="mono" type="number" inputmode="numeric" min="100" max="3000" step="50" placeholder="300" />
+      <button class="btn btn-primary" type="submit">Anotar</button>
+    </form>
     <div class="agua-registros" id="agua-registros"></div>
   </section>
 
   <!-- Refeição (RF04: 1 toque por refeição + avaliação) -->
   <section class="sheet hidden" id="sheet-ref" aria-label="Registrar refeição">
     <header class="sheet-head"><h3>Refeição</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
-    <p class="sheet-meta">Sem foto, sem caloria, sem julgamento. Registrar já é vitória.<br /><small>Na PoC a lista de refeições é fixa; no app ela será configurável (GDD §4.2).</small></p>
+    <p class="sheet-meta">Sem foto, sem caloria, sem julgamento. Registrar já é vitória.</p>
     <div id="ref-lista"></div>
   </section>
 
@@ -228,6 +233,15 @@
   <!-- Perfil (RF11) -->
   <section class="sheet hidden" id="sheet-perfil" aria-label="Perfil e configurações">
     <header class="sheet-head"><h3>Perfil</h3><button class="sheet-close" data-close aria-label="Fechar">&times;</button></header>
+    <div class="field">
+      <label>Suas refeições <small>(vale a partir de amanhã)</small></label>
+      <div class="refeicoes-cfg" id="refeicoes-cfg"></div>
+      <form class="ref-nova" id="ref-nova">
+        <label class="sr-only" for="ref-nome">Nome da refeição</label>
+        <input id="ref-nome" type="text" maxlength="24" placeholder="ex.: lanche da tarde" autocomplete="off" />
+        <button class="btn btn-ghost" type="submit">Adicionar</button>
+      </form>
+    </div>
     <div class="field">
       <label for="cfg-nome">Nome da sua capivara</label>
       <input id="cfg-nome" type="text" maxlength="20" />
