@@ -190,6 +190,49 @@
     return { adotar, divergencia: Object.keys(divergencia).length ? divergencia : null };
   }
 
+  /* ── conta (opcional, e tardia de propósito) ── */
+
+  async function pedirEntrada(email) {
+    await garantirDispositivo({});
+    await pedir('/auth/entrar', { metodo: 'POST', corpo: { email } });
+    return true; /* a resposta é sempre a mesma, com conta ou sem */
+  }
+
+  async function confirmarEntrada({ email, codigo, token }) {
+    await garantirDispositivo({});
+    const ligada = await pedir('/auth/confirmar', { metodo: 'POST', corpo: { email, codigo, token } });
+    cfg.email = ligada.email;
+    /* o cursor do titular mudou (adoção renumera): recomeça a leitura do zero */
+    cfg.cursor = 0;
+    salvarCfg();
+    return ligada;
+  }
+
+  async function quemSouEu() {
+    if (!ativo() || !cfg.token) return null;
+    try {
+      const eu = await pedir('/auth/eu');
+      cfg.email = eu.email || null;
+      salvarCfg();
+      return eu;
+    } catch (_e) { return null; }
+  }
+
+  /** Link mágico aberto no app: ?entrar=SEGREDO entra sozinho e some da URL. */
+  async function entrarPeloLink() {
+    const url = new URL(location.href);
+    const segredo = url.searchParams.get('entrar');
+    if (!segredo || !ativo()) return null;
+    url.searchParams.delete('entrar');
+    history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+    try {
+      return await confirmarEntrada({ token: segredo });
+    } catch (e) {
+      console.warn('[sync] link de entrada não valeu:', e.message);
+      return null;
+    }
+  }
+
   function estado() {
     return {
       ativo: ativo(),
@@ -197,6 +240,7 @@
       pendentes: outbox().length,
       ultimoEm: cfg ? cfg.ultimoEm || null : null,
       dispositivoId: cfg ? cfg.dispositivoId : null,
+      email: cfg ? cfg.email || null : null,
     };
   }
 
@@ -210,6 +254,7 @@
 
   window.CapiSync = {
     ativo, registrar, sincronizar, reconciliar, estado, limpar,
+    pedirEntrada, confirmarEntrada, quemSouEu, entrarPeloLink,
     aoMudar: (fn) => { aoMudar = fn; },
   };
 })();

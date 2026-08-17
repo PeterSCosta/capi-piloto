@@ -263,9 +263,33 @@
       </div>
     </div>
     <hr class="sep" />
-    <p class="perfil-convite hidden" id="perfil-sync">
-      <span id="perfil-sync-txt">—</span>
-    </p>
+    <div class="conta hidden" id="perfil-conta">
+      <p class="perfil-convite"><span id="perfil-sync-txt">—</span></p>
+      <p class="conta-atual hidden" id="conta-atual">
+        Guardado na conta <strong id="conta-email">—</strong>
+      </p>
+      <div class="conta-oferta" id="conta-oferta">
+        <p class="ob-note">Quer abrir a mesma Capi em outro aparelho? Deixa um e-mail — sem senha,
+          a gente manda um código.</p>
+        <form id="conta-form-email">
+          <label class="sr-only" for="conta-email-input">Seu e-mail</label>
+          <div class="conta-linha">
+            <input id="conta-email-input" type="email" inputmode="email" autocomplete="email"
+                   placeholder="voce@exemplo.com" />
+            <button class="btn btn-ghost" type="submit">Enviar código</button>
+          </div>
+        </form>
+        <form id="conta-form-codigo" class="hidden">
+          <label class="sr-only" for="conta-codigo">Código de 6 dígitos</label>
+          <div class="conta-linha">
+            <input id="conta-codigo" class="mono" type="text" inputmode="numeric" maxlength="6"
+                   autocomplete="one-time-code" placeholder="000000" />
+            <button class="btn btn-primary" type="submit">Entrar</button>
+          </div>
+          <p class="ob-note" id="conta-aviso">Olha o código no seu e-mail — ele vale 15 minutos.</p>
+        </form>
+      </div>
+    </div>
     <p class="perfil-convite hidden" id="perfil-convite">
       Piloto como <strong id="perfil-convite-nome">—</strong>
       <button class="link-btn" id="btn-sair">sair deste device</button>

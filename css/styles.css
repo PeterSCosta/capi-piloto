@@ -459,3 +459,10 @@ small { color: var(--ink-soft); font-weight: 400; }
 .ref-linha button { color: var(--coral); font-weight: 800; font-size: 16px; padding: 8px 10px; margin: -8px -6px; }
 .ref-nova { display: flex; gap: 8px; }
 .ref-nova .btn { flex-shrink: 0; }
+
+/* ═══ Conta (opcional, tardia) ═══ */
+.conta { display: flex; flex-direction: column; gap: 8px; }
+.conta-linha { display: flex; gap: 8px; }
+.conta-linha .btn { flex-shrink: 0; }
+.conta-atual { font-size: 13px; color: var(--ink-soft); }
+.conta-atual strong { color: var(--ink); }

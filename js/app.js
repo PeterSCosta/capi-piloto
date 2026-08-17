@@ -175,10 +175,16 @@
 
   function renderSync() {
     if (!Sync) return;
-    const linha = $('perfil-sync');
+    const bloco = $('perfil-conta');
     const info = Sync.estado();
-    if (!info.ativo) { linha.classList.add('hidden'); return; }
-    linha.classList.remove('hidden');
+    if (!info.ativo) { bloco.classList.add('hidden'); return; }
+    bloco.classList.remove('hidden');
+
+    /* a conta é oferecida, nunca exigida: quem não quer segue com tudo funcionando */
+    const temConta = !!info.email;
+    $('conta-atual').classList.toggle('hidden', !temConta);
+    $('conta-oferta').classList.toggle('hidden', temConta);
+    if (temConta) $('conta-email').textContent = info.email;
     const quando = info.ultimoEm
       ? new Date(info.ultimoEm).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })
       : 'ainda não';
@@ -839,6 +845,41 @@
       save();
       toast('Nova meta de passos vale a partir de amanhã');
     });
+    /* ── conta: pedir código e confirmar ── */
+    $('conta-form-email').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const email = $('conta-email-input').value.trim();
+      if (!email || !email.includes('@')) { toast('Confere esse e-mail'); return; }
+      try {
+        await Sync.pedirEntrada(email);
+        $('conta-form-codigo').classList.remove('hidden');
+        $('conta-codigo').focus();
+        toast('Código a caminho');
+      } catch (_e) {
+        toast('Não consegui pedir agora. Tenta daqui a pouco.');
+      }
+    });
+
+    $('conta-form-codigo').addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const email = $('conta-email-input').value.trim();
+      const codigo = $('conta-codigo').value.trim();
+      if (codigo.length !== 6) { toast('O código tem 6 dígitos'); return; }
+      try {
+        const ligada = await Sync.confirmarEntrada({ email, codigo });
+        $('conta-codigo').value = '';
+        $('conta-form-codigo').classList.add('hidden');
+        renderSync();
+        /* o cursor mudou (adoção renumera) e pode haver diário de outro aparelho esperando */
+        await sincronizar(true);
+        toast(ligada.eventosAdotados
+          ? `Pronto! ${ligada.eventosAdotados} registro(s) deste aparelho entraram na conta`
+          : 'Pronto! Seu diário está guardado na conta');
+      } catch (_e) {
+        toast('Esse código não valeu. Confere ou pede outro.');
+      }
+    });
+
     $('ref-nova').addEventListener('submit', (ev) => {
       ev.preventDefault();
       const nome = $('ref-nome').value.trim();
@@ -928,6 +969,11 @@
 
     /* sobe o que estiver pendente: ao abrir, ao voltar para o app e quando a internet volta */
     if (Sync && Sync.ativo()) {
+      /* link mágico aberto neste aparelho entra sozinho e some da URL */
+      Sync.entrarPeloLink().then((ligada) => {
+        if (ligada) { renderSync(); toast('Entrou na sua conta'); }
+      });
+      Sync.quemSouEu().then(() => renderSync());
       sincronizar(true);
       window.addEventListener('online', () => sincronizar(true));
       setInterval(() => sincronizar(true), 5 * 60 * 1000);
