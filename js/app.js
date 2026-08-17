@@ -1054,13 +1054,26 @@
       };
       leitor.readAsText(arquivo);
     });
-    $('btn-excluir').addEventListener('click', () => {
+    $('btn-excluir').addEventListener('click', async () => {
       if (!confirm('Excluir TODOS os seus dados deste aparelho? Apaga o progresso, o histórico de uso e o acesso ao piloto. Não tem volta.')) return;
       /* LGPD: "apaga tudo" tem que apagar tudo mesmo — inclusive a sessão do convite,
          que antes sobrevivia e fazia o app reentrar sozinho */
       Tel.limpar();
       localStorage.removeItem(KEY);
       localStorage.removeItem('capi-demo');
+      if (Sync) {
+        /* com sync ligado sobravam três coisas que fazem "apaga tudo" virar mentira: o token do
+           aparelho e a outbox (que guarda registro cru esperando rede), a inscrição de push (a Capi
+           continuaria cutucando um titular que a pessoa acabou de apagar) e o CacheStorage */
+        try { await Sync.desinscreverDePush(); } catch (_e) { /* sem rede, segue */ }
+        Sync.limpar();
+      }
+      if (window.caches) {
+        try {
+          const nomes = await caches.keys();
+          await Promise.all(nomes.map((n) => caches.delete(n)));
+        } catch (_e) { /* navegador sem CacheStorage */ }
+      }
       window.PetAcesso.sair(); /* apaga também a sessão do convite e volta ao portão */
     });
 
@@ -1071,7 +1084,7 @@
     initDemo();
 
     /* sobe o que estiver pendente: ao abrir, ao voltar para o app e quando a internet volta */
-    if (Sync && Sync.ativo()) {
+    function iniciarSync() {
       /* link mágico aberto neste aparelho entra sozinho e some da URL */
       Sync.entrarPeloLink().then((ligada) => {
         if (ligada) { renderSync(); toast('Entrou na sua conta'); }
@@ -1086,9 +1099,19 @@
           if (ev.data && ev.data.tipo === 'push-aberto') Sync.avisarQueAbriuPush(ev.data.gatilho);
         });
       }
+      renderSync();
       sincronizar(true);
       window.addEventListener('online', () => sincronizar(true));
       setInterval(() => sincronizar(true), 5 * 60 * 1000);
+    }
+
+    if (Sync) {
+      /* o sync não depende mais de alguém abrir a URL com ?sync=1: o app procura a API no próprio
+         domínio. É o que faz a mudança do GitHub Pages para o domínio novo acontecer sozinha, sem
+         reemitir convite — e o que evita a falha silenciosa de alguém usar um app que parece
+         inteiro e não guarda nada no servidor. */
+      if (Sync.ativo()) iniciarSync();
+      else Sync.descobrirApi().then((achou) => { if (achou) iniciarSync(); });
     }
 
     /* PWA: instala na tela inicial e funciona offline (RNF04) */

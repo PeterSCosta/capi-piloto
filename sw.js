@@ -4,7 +4,7 @@
    handler de fetch para o porquê.
 
    Ao mexer em qualquer arquivo do SHELL, suba a VERSAO — é o que limpa o cache antigo. */
-const VERSAO = 'v7';
+const VERSAO = 'v9';
 const CACHE = `capi-${VERSAO}`;
 
 const SHELL = [
@@ -99,6 +99,13 @@ self.addEventListener('fetch', (ev) => {
 
   const url = new URL(req.url);
   if (url.origin !== location.origin) return; /* nada de terceiros para cachear */
+
+  /* A API mora em /api do MESMO domínio (é o que evita CORS), então ela cairia nesta regra de
+     network-first e o diário da pessoa acabaria gravado no CacheStorage — um lugar que o "excluir
+     tudo" não varre e que a tela de privacidade não promete. Além disso, resposta de sync servida
+     do cache é resposta velha se passando por atual. Chamada de API não se cacheia: vai na rede ou
+     falha, e quem trata a falta de rede é a outbox. */
+  if (url.pathname === '/api' || url.pathname.startsWith('/api/')) return;
 
   /* NETWORK-FIRST para tudo do próprio site, com o cache como rede de segurança offline.
      Por que não cache-first: o app é pequeno (~90 KB) e o piloto recebe deploys frequentes de tom e

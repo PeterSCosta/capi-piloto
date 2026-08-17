@@ -20,7 +20,10 @@
 
   const KEY_CFG = 'capi-sync-cfg';
   const KEY_OUTBOX = 'capi-outbox';
+  const KEY_DESLIGADO = 'capi-sync-nao';   /* desligou de propósito: não religar sozinho */
+  const KEY_SONDA = 'capi-sync-sonda';     /* quando foi a última procura por API */
   const TETO_OUTBOX = 2000;
+  const INTERVALO_SONDA = 12 * 60 * 60 * 1000;
 
   const ler = (chave, padrao) => {
     try {
@@ -48,15 +51,58 @@
     if (pedido === '0' || pedido === 'off') {
       cfg = null;
       localStorage.removeItem(KEY_CFG);
+      /* marca explícita: sem ela, "desligado de propósito" fica igual a "nunca configurado" e a
+         descoberta automática religaria o sync no próximo carregamento */
+      try { localStorage.setItem(KEY_DESLIGADO, '1'); } catch (_e) { /* cota */ }
     } else {
       const base = (pedido === '1' || pedido === 'on')
-        ? new URL('api', location.href.replace(/[^/]*$/, '')).toString().replace(/\/$/, '')
+        ? urlPadraoDaApi()
         : pedido.replace(/\/$/, '');
       cfg = Object.assign({ dispositivoId: null, token: null, cursor: 0, migrou: false }, cfg || {}, { url: base });
+      localStorage.removeItem(KEY_DESLIGADO);
       salvarCfg();
     }
     url.searchParams.delete('sync');
     history.replaceState(null, '', url.pathname + (url.search || '') + url.hash);
+    return true;
+  }
+
+  /** `/api` do mesmo diretório em que o app está servido — a topologia da produção. */
+  function urlPadraoDaApi() {
+    return new URL('api', location.href.replace(/[^/]*$/, '')).toString().replace(/\/$/, '');
+  }
+
+  /**
+   * Descobre sozinho se existe API neste domínio.
+   *
+   * Sem isto, o sync só liga com `?sync=1` na URL — o que significaria reemitir todo convite e
+   * pedir para cada pessoa abrir um link especial, uma vez, para nunca mais. Quem esquecesse
+   * ficaria com um app que parece inteiro e não guarda nada no servidor: a pior falha possível,
+   * porque é silenciosa.
+   *
+   * A sonda é um GET em /api/health. Onde não há API (o piloto no GitHub Pages), ela dá 404, o app
+   * segue 100% local, e só se repete de 12 em 12 horas — é isso que faz a migração para o domínio
+   * novo acontecer sozinha, sem ninguém tocar em link de convite.
+   */
+  async function descobrirApi() {
+    if (ativo()) return true;
+    if (localStorage.getItem(KEY_DESLIGADO)) return false;
+
+    const agora = Date.now();
+    const ultima = Number(localStorage.getItem(KEY_SONDA) || 0);
+    if (agora - ultima < INTERVALO_SONDA) return false;
+    try { localStorage.setItem(KEY_SONDA, String(agora)); } catch (_e) { /* cota */ }
+
+    const base = urlPadraoDaApi();
+    try {
+      const resp = await fetch(`${base}/health`, { cache: 'no-store' });
+      if (!resp.ok) return false;
+      const corpo = await resp.json();
+      if (!corpo || corpo.status !== 'ok') return false;
+    } catch (_e) { return false; }
+
+    cfg = Object.assign({ dispositivoId: null, token: null, cursor: 0, migrou: false }, cfg || {}, { url: base });
+    salvarCfg();
     return true;
   }
 
@@ -382,13 +428,14 @@
   function limpar() {
     localStorage.removeItem(KEY_CFG);
     localStorage.removeItem(KEY_OUTBOX);
+    localStorage.removeItem(KEY_SONDA);
     cfg = null;
   }
 
   configurarPelaUrl();
 
   window.CapiSync = {
-    ativo, registrar, sincronizar, reconciliar, estado, limpar,
+    ativo, descobrirApi, registrar, sincronizar, reconciliar, estado, limpar,
     pedirEntrada, confirmarEntrada, quemSouEu, entrarPeloLink,
     pushDisponivel, inscreverEmPush, desinscreverDePush,
     lerPreferenciasDePush, salvarPreferenciasDePush, avisarQueAbriuPush, consumirAberturaDePush,
